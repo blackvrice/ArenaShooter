@@ -1,0 +1,5 @@
+Name,EnemyType,MaxHealth,MoveSpeed,AttackDamage,ScoreValue
+Enemy_Normal,Normal,60,350,10,100
+Enemy_Fast,Fast,35,520,8,150
+Enemy_Tank,Tank,180,230,18,300
+Enemy_Boss,Boss,1200,260,30,2000

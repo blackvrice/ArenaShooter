@@ -1,0 +1,6 @@
+Round,ActiveDirections,NormalEnemy,FastEnemy,TankEnemy,Boss,TotalEnemy,Description
+1,"North;South",8,0,0,0,8,"북/남 기본 웨이브"
+2,"North;South;East;West",12,4,0,0,16,"동서남북 4방향 웨이브"
+3,"North;South;East;West;NorthEast;SouthWest",16,6,2,0,24,"4방향 + 북동/남서"
+4,"North;South;East;West;NorthEast;NorthWest;SouthEast;SouthWest",22,8,4,0,34,"8방향 전방위 웨이브"
+5,"Center;North;South;East;West;NorthEast;SouthWest",8,4,2,1,15,"중앙 보스 출현"

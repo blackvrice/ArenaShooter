@@ -1,0 +1,129 @@
+{
+  "project": "CentralWaveShooter",
+  "map": {
+    "sizeUU": [
+      4000,
+      4000
+    ],
+    "center": [
+      0,
+      0,
+      0
+    ],
+    "centerCombatRadiusUU": 800,
+    "spawnDistanceUU": 1900
+  },
+  "spawnPoints": [
+    {
+      "direction": "North",
+      "location": [
+        0,
+        1900,
+        0
+      ],
+      "activeRounds": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "direction": "South",
+      "location": [
+        0,
+        -1900,
+        0
+      ],
+      "activeRounds": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "direction": "East",
+      "location": [
+        1900,
+        0,
+        0
+      ],
+      "activeRounds": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "direction": "West",
+      "location": [
+        -1900,
+        0,
+        0
+      ],
+      "activeRounds": [
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "direction": "NorthEast",
+      "location": [
+        1350,
+        1350,
+        0
+      ],
+      "activeRounds": [
+        3,
+        4
+      ]
+    },
+    {
+      "direction": "SouthWest",
+      "location": [
+        -1350,
+        -1350,
+        0
+      ],
+      "activeRounds": [
+        3,
+        4
+      ]
+    },
+    {
+      "direction": "NorthWest",
+      "location": [
+        -1350,
+        1350,
+        0
+      ],
+      "activeRounds": [
+        4
+      ]
+    },
+    {
+      "direction": "SouthEast",
+      "location": [
+        1350,
+        -1350,
+        0
+      ],
+      "activeRounds": [
+        4
+      ]
+    },
+    {
+      "direction": "Center",
+      "location": [
+        0,
+        0,
+        0
+      ],
+      "activeRounds": [
+        5
+      ]
+    }
+  ]
+}
