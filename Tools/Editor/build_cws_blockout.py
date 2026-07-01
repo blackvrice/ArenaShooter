@@ -1,4 +1,5 @@
 import math
+import pathlib
 
 import unreal
 
@@ -6,6 +7,9 @@ import unreal
 LEVEL_PATH = "/Game/Variant_Combat/Lvl_Combat"
 FOLDER_PATH = "CWS_Blockout"
 PREFIX = "CWS_"
+ARENA_SIZE = 4000
+ARENA_HALF = ARENA_SIZE / 2.0
+BOUNDARY_THICKNESS = 80
 
 CUBE_PATH = "/Game/LevelPrototyping/Meshes/SM_Cube"
 CYLINDER_PATH = "/Game/LevelPrototyping/Meshes/SM_Cylinder"
@@ -13,6 +17,7 @@ CHAMFER_CUBE_PATH = "/Game/LevelPrototyping/Meshes/SM_ChamferCube"
 FLOOR_MAT_PATH = "/Game/LevelPrototyping/Materials/MI_PrototypeGrid_Gray"
 DARK_MAT_PATH = "/Game/LevelPrototyping/Materials/MI_PrototypeGrid_TopDark"
 COLOR_MAT_PATH = "/Game/LevelPrototyping/Materials/MI_DefaultColorway"
+EXTERNAL_ACTOR_DIR = pathlib.Path(unreal.Paths.project_content_dir()) / "__ExternalActors__" / "Variant_Combat" / "Lvl_Combat"
 
 
 def load_asset(path):
@@ -22,23 +27,40 @@ def load_asset(path):
     return asset
 
 
-def set_label(actor, label):
+def set_label(actor, label, hide_in_game=False, editor_only=False):
     actor.set_actor_label(label, mark_dirty=True)
     actor.set_folder_path(FOLDER_PATH)
     actor.set_editor_property("tags", [unreal.Name("CWS"), unreal.Name("GeneratedBlockout")])
+    if hide_in_game:
+        actor.set_actor_hidden_in_game(True)
+    if editor_only:
+        try:
+            actor.set_editor_property("is_editor_only_actor", True)
+        except Exception:
+            pass
 
 
 def cube_scale(size):
     return unreal.Vector(size[0] / 100.0, size[1] / 100.0, size[2] / 100.0)
 
 
-def spawn_mesh(actor_subsystem, mesh, material, label, location, size, rotation=(0.0, 0.0, 0.0)):
+def spawn_mesh(
+    actor_subsystem,
+    mesh,
+    material,
+    label,
+    location,
+    size,
+    rotation=(0.0, 0.0, 0.0),
+    hide_in_game=False,
+    editor_only=False,
+):
     actor = actor_subsystem.spawn_actor_from_class(
         unreal.StaticMeshActor,
         unreal.Vector(location[0], location[1], location[2]),
         unreal.Rotator(rotation[0], rotation[1], rotation[2]),
     )
-    set_label(actor, label)
+    set_label(actor, label, hide_in_game=hide_in_game, editor_only=editor_only)
     component = actor.static_mesh_component
     component.set_static_mesh(mesh)
     if material:
@@ -47,13 +69,23 @@ def spawn_mesh(actor_subsystem, mesh, material, label, location, size, rotation=
     return actor
 
 
-def spawn_cylinder(actor_subsystem, mesh, material, label, location, radius, height):
+def spawn_cylinder(
+    actor_subsystem,
+    mesh,
+    material,
+    label,
+    location,
+    radius,
+    height,
+    hide_in_game=False,
+    editor_only=False,
+):
     actor = actor_subsystem.spawn_actor_from_class(
         unreal.StaticMeshActor,
         unreal.Vector(location[0], location[1], location[2]),
         unreal.Rotator(0.0, 0.0, 0.0),
     )
-    set_label(actor, label)
+    set_label(actor, label, hide_in_game=hide_in_game, editor_only=editor_only)
     component = actor.static_mesh_component
     component.set_static_mesh(mesh)
     if material:
@@ -68,7 +100,7 @@ def spawn_text(actor_subsystem, label, text, location, yaw=0.0):
         unreal.Vector(location[0], location[1], location[2]),
         unreal.Rotator(0.0, yaw, 0.0),
     )
-    set_label(actor, label)
+    set_label(actor, label, hide_in_game=True, editor_only=True)
     component = actor.get_text_render() if hasattr(actor, "get_text_render") else None
     if component:
         component.set_text(text)
@@ -87,7 +119,7 @@ def spawn_target(actor_subsystem, label, location):
         unreal.Vector(location[0], location[1], location[2]),
         unreal.Rotator(0.0, 0.0, 0.0),
     )
-    set_label(actor, label)
+    set_label(actor, label, hide_in_game=True)
     return actor
 
 
@@ -102,8 +134,27 @@ def spawn_spawner_or_target(actor_subsystem, label, location):
         unreal.Vector(location[0], location[1], location[2]),
         unreal.Rotator(0.0, 0.0, 0.0),
     )
-    set_label(actor, label)
+    set_label(actor, label, hide_in_game=True)
     return actor
+
+
+def remove_generated_external_actor_files():
+    root = EXTERNAL_ACTOR_DIR.resolve()
+    content_root = pathlib.Path(unreal.Paths.project_content_dir()).resolve()
+    if content_root not in root.parents:
+        raise RuntimeError(f"Unexpected external actor path: {root}")
+    if not root.exists():
+        return 0
+
+    removed_count = 0
+    for asset_path in root.rglob("*.uasset"):
+        data = asset_path.read_bytes()
+        if b"CWS_" in data and b"GeneratedBlockout" in data:
+            asset_path.unlink()
+            removed_count += 1
+    if removed_count:
+        unreal.log(f"CWS removed generated external actor files before rebuild: {removed_count}")
+    return removed_count
 
 
 def destroy_generated_actors(actor_subsystem):
@@ -137,10 +188,12 @@ def summarize_generated_actors(actor_subsystem):
 
 
 def place_boundary(actor_subsystem, cube_mesh, dark_mat):
-    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_North", (0, 1550, 120), (4100, 80, 240))
-    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_South", (0, -1550, 120), (4100, 80, 240))
-    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_East", (2050, 0, 120), (80, 3100, 240))
-    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_West", (-2050, 0, 120), (80, 3100, 240))
+    edge = ARENA_HALF + (BOUNDARY_THICKNESS / 2.0)
+    wall_span = ARENA_SIZE + BOUNDARY_THICKNESS
+    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_North", (0, edge, 120), (wall_span, 80, 240))
+    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_South", (0, -edge, 120), (wall_span, 80, 240))
+    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_East", (edge, 0, 120), (80, wall_span, 240))
+    spawn_mesh(actor_subsystem, cube_mesh, dark_mat, PREFIX + "Boundary_West", (-edge, 0, 120), (80, wall_span, 240))
 
 
 def place_cover(actor_subsystem, cube_mesh, chamfer_mesh, dark_mat, color_mat):
@@ -161,7 +214,7 @@ def place_cover(actor_subsystem, cube_mesh, chamfer_mesh, dark_mat, color_mat):
             color_mat,
             f"{PREFIX}LowCover_{index:02d}",
             (x, y, 60),
-            (360, 95, 120),
+            (360, 95, 130),
             (0.0, pitch, yaw),
         )
 
@@ -177,22 +230,22 @@ def place_cover(actor_subsystem, cube_mesh, chamfer_mesh, dark_mat, color_mat):
             cube_mesh,
             dark_mat,
             f"{PREFIX}HighCover_{index:02d}",
-            (x, y, 100),
-            (300, 120, 200),
+            (x, y, 90),
+            (320, 120, 180),
             (0.0, 0.0, yaw),
         )
 
 
 def place_spawn_points(actor_subsystem, cylinder_mesh, color_mat):
     spawn_points = [
-        ("North", "N", (0, 1500, 70)),
-        ("South", "S", (0, -1500, 70)),
-        ("East", "E", (2000, 0, 70)),
-        ("West", "W", (-2000, 0, 70)),
-        ("NorthEast", "NE", (1600, 1200, 70)),
-        ("SouthWest", "SW", (-1600, -1200, 70)),
-        ("NorthWest", "NW", (-1600, 1200, 70)),
-        ("SouthEast", "SE", (1600, -1200, 70)),
+        ("North", "N", (0, 1900, 70)),
+        ("South", "S", (0, -1900, 70)),
+        ("East", "E", (1900, 0, 70)),
+        ("West", "W", (-1900, 0, 70)),
+        ("NorthEast", "NE", (1350, 1350, 70)),
+        ("SouthWest", "SW", (-1350, -1350, 70)),
+        ("NorthWest", "NW", (-1350, 1350, 70)),
+        ("SouthEast", "SE", (1350, -1350, 70)),
     ]
     for direction, short_name, location in spawn_points:
         spawn_spawner_or_target(actor_subsystem, f"{PREFIX}Spawn_{direction}", location)
@@ -204,6 +257,8 @@ def place_spawn_points(actor_subsystem, cylinder_mesh, color_mat):
             location,
             90,
             140,
+            hide_in_game=True,
+            editor_only=True,
         )
         spawn_text(
             actor_subsystem,
@@ -246,10 +301,12 @@ def place_navigation_and_starts(actor_subsystem):
         unreal.Rotator(0.0, 0.0, 0.0),
     )
     set_label(nav_volume, PREFIX + "NavMeshBounds")
-    nav_volume.set_actor_scale3d(unreal.Vector(42.0, 32.0, 4.0))
+    nav_volume.set_actor_scale3d(unreal.Vector(44.0, 44.0, 4.0))
 
 
 def main():
+    remove_generated_external_actor_files()
+
     level_subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     actor_subsystem = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 
@@ -265,7 +322,14 @@ def main():
 
     destroy_generated_actors(actor_subsystem)
 
-    spawn_mesh(actor_subsystem, cube_mesh, floor_mat, PREFIX + "ArenaFloor_4000x3000", (0, 0, -5), (4000, 3000, 10))
+    spawn_mesh(
+        actor_subsystem,
+        cube_mesh,
+        floor_mat,
+        PREFIX + "ArenaFloor_4000x4000",
+        (0, 0, -5),
+        (ARENA_SIZE, ARENA_SIZE, 10),
+    )
     spawn_cylinder(actor_subsystem, cylinder_mesh, color_mat, PREFIX + "CenterSafeZone_R300", (0, 0, 5), 300, 10)
 
     for index in range(16):
