@@ -109,6 +109,14 @@ GameMode BeginPlay
 - HandleEnemyDeath(ACWSEnemyBase* Enemy)
 - StartBossRound()
 
+### 현재 구현
+
+- `ACWSWaveManager`가 Round 1~5 기본 데이터를 소유한다.
+- 방향 그룹을 라운드 로빈 순서로 큐에 넣어 한 방향에 스폰이 몰리지 않게 한다.
+- 생성된 적의 `OnDestroyed` 이벤트로 남은 적과 라운드 클리어를 판정한다.
+- `OnRoundStarted`, `OnRemainingEnemyCountChanged`, `OnRoundCleared`, `OnAllRoundsCompleted` Blueprint delegate를 제공한다.
+- 현재 기본 적과 보스 슬롯은 `BP_CombatEnemy`를 사용하며 전용 클래스가 생기면 에디터에서 교체한다.
+
 ## 7. SpawnPoint 설계
 
 ### 변수
@@ -122,6 +130,8 @@ GameMode BeginPlay
 - GetSpawnTransform()
 - CanSpawn()
 - SpawnEnemy(TSubclassOf<ACWSEnemyBase> EnemyClass)
+
+현재 `ACWSSpawnPoint`는 방향 태그와 Transform을 제공하고, 실제 Spawn 호출은 `ACWSWaveManager`가 담당한다.
 
 ## 8. EnemyBase 설계
 

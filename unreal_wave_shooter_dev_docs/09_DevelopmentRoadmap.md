@@ -7,7 +7,7 @@
 - 프로젝트 생성
 - Third Person 기반 Player 구성
 - 중앙 아레나 맵 Blockout 제작
-- 8방향 SpawnPoint 배치
+- [x] 8방향 + 중앙 SpawnPoint 배치
 
 ### Week 2
 
@@ -18,10 +18,10 @@
 
 ### Week 3
 
-- WaveManager 구현
-- Round 1~4 스폰 로직 구현
-- 남은 적 수 체크
-- 라운드 클리어 처리
+- [x] WaveManager 구현
+- [x] Round 1~5 스폰 로직 구현
+- [x] 남은 적 수 체크
+- [x] 라운드 클리어 처리
 
 ### Week 4
 

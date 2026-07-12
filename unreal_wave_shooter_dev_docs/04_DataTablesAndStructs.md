@@ -119,62 +119,58 @@ Round_05,5,true,5.0,0.0,"중앙 보스 출현"
 
 ## 6. 라운드별 SpawnGroup 권장값
 
+현재 C++ 초기 구현은 아래 방향과 Count를 기본값으로 사용한다. `Default` 그룹은 `DefaultEnemyClass`, `Boss slot` 그룹은 `BossEnemyClass`를 사용한다. 아직 두 슬롯 모두 `BP_CombatEnemy`로 지정되어 있다.
+
 ### Round 1
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Normal | 4 | 1.2 |
-| South | Normal | 4 | 1.2 |
+| North | Default | 4 | 1.2 |
+| South | Default | 4 | 1.2 |
 
 ### Round 2
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Normal | 3 | 1.0 |
-| South | Normal | 3 | 1.0 |
-| East | Normal | 3 | 1.0 |
-| West | Normal | 3 | 1.0 |
-| East | Fast | 2 | 1.5 |
-| West | Fast | 2 | 1.5 |
+| North | Default | 4 | 1.0 |
+| South | Default | 4 | 1.0 |
+| East | Default | 4 | 1.0 |
+| West | Default | 4 | 1.0 |
 
 ### Round 3
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Normal | 4 | 0.9 |
-| South | Normal | 4 | 0.9 |
-| East | Normal | 4 | 0.9 |
-| West | Normal | 4 | 0.9 |
-| NorthEast | Fast | 3 | 1.2 |
-| SouthWest | Fast | 3 | 1.2 |
-| NorthEast | Tank | 1 | 2.0 |
-| SouthWest | Tank | 1 | 2.0 |
+| North | Default | 4 | 0.9 |
+| South | Default | 4 | 0.9 |
+| East | Default | 4 | 0.9 |
+| West | Default | 4 | 0.9 |
+| NorthEast | Default | 4 | 1.1 |
+| SouthWest | Default | 4 | 1.1 |
 
 ### Round 4
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Normal | 3 | 0.8 |
-| South | Normal | 3 | 0.8 |
-| East | Normal | 4 | 0.8 |
-| West | Normal | 4 | 0.8 |
-| NorthEast | Fast | 2 | 1.0 |
-| NorthWest | Fast | 2 | 1.0 |
-| SouthEast | Fast | 2 | 1.0 |
-| SouthWest | Fast | 2 | 1.0 |
-| North | Tank | 1 | 2.5 |
-| South | Tank | 1 | 2.5 |
-| East | Tank | 1 | 2.5 |
-| West | Tank | 1 | 2.5 |
+| North | Default | 5 | 0.8 |
+| South | Default | 5 | 0.8 |
+| East | Default | 4 | 0.8 |
+| West | Default | 4 | 0.8 |
+| NorthEast | Default | 4 | 1.0 |
+| NorthWest | Default | 4 | 1.0 |
+| SouthEast | Default | 4 | 1.0 |
+| SouthWest | Default | 4 | 1.0 |
 
 ### Round 5
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| Center | Boss | 1 | 0 |
-| North | Normal | 2 | 1.5 |
-| South | Normal | 2 | 1.5 |
-| East | Fast | 2 | 2.0 |
-| West | Fast | 2 | 2.0 |
-| NorthEast | Tank | 1 | 4.0 |
-| SouthWest | Tank | 1 | 4.0 |
+| Center | Boss slot | 1 | 0.1 |
+| North | Default | 3 | 1.2 |
+| South | Default | 3 | 1.2 |
+| East | Default | 2 | 1.2 |
+| West | Default | 2 | 1.2 |
+| NorthEast | Default | 1 | 1.5 |
+| NorthWest | Default | 1 | 1.5 |
+| SouthEast | Default | 1 | 1.5 |
+| SouthWest | Default | 1 | 1.5 |
