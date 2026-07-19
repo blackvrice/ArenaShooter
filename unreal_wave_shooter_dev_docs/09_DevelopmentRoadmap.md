@@ -4,17 +4,18 @@
 
 ### Week 1
 
-- 프로젝트 생성
-- Third Person 기반 Player 구성
-- 중앙 아레나 맵 Blockout 제작
+- [x] 프로젝트 생성
+- [x] Third Person 기반 네이티브 Player 구성
+- [x] 중앙 아레나 맵 Blockout 제작
 - [x] 8방향 + 중앙 SpawnPoint 배치
+- [x] PlayerStart + NavMesh Bounds 배치
 
 ### Week 2
 
-- HealthComponent 구현
-- Projectile/Weapon 구현
-- EnemyBase 구현
-- 적 피격/사망 처리
+- [x] HealthComponent 구현
+- [x] Hitscan Weapon 구현
+- [x] EnemyBase + AIController 구현
+- [x] 적 피격/사망 처리
 
 ### Week 3
 
@@ -26,9 +27,9 @@
 ### Week 4
 
 - Boss Round 구현
-- UI HUD 구현
+- [x] 기본 Canvas HUD 구현
 - 보급/회복 아이템 구현
-- 게임 오버/클리어 처리
+- [x] 게임 오버/클리어 상태 표시
 
 ## 2. 2차 목표: 포트폴리오 완성도
 
@@ -87,3 +88,13 @@
 - 보스 처치 시 클리어
 - UI 표시
 - 패키징 가능
+
+## 5. 현재 검증 상태와 다음 목표
+
+- [x] 에디터 Development 빌드
+- [x] `Lvl_Combat` Map Check 오류 0
+- [x] Round 1 적 8마리 생성, NavMesh 추적, 사망, 라운드 클리어 런타임 스모크 테스트
+- [ ] 전용 Boss 클래스와 패턴
+- [ ] 보급/회복 아이템
+- [ ] Round 1~5 수동 플레이 밸런싱
+- [ ] 패키징 빌드와 패키지 실행 테스트

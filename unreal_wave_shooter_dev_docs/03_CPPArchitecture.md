@@ -25,23 +25,18 @@ Blueprint
 
 ## 2. 주요 클래스 목록
 
-| 클래스 | 부모 클래스 | 역할 |
-|---|---|---|
-| ACWSPlayerCharacter | ACharacter | 플레이어 이동, 조준, 사격 입력 |
-| ACWSPlayerController | APlayerController | 입력 매핑, UI 생성 |
-| UCWSHealthComponent | UActorComponent | 체력, 데미지, 사망 이벤트 |
-| ACWSWeaponBase | AActor | 무기 기본 클래스 |
-| ACWSProjectile | AActor | 투사체, 충돌, 데미지 |
-| ACWSEnemyBase | ACharacter | 적 기본 클래스 |
-| ACWSEnemyAIController | AAIController | 적 AI 제어 |
-| ACWSBossEnemy | ACWSEnemyBase | 보스 전용 패턴 |
-| ACWSSpawnPoint | AActor | 방향별 스폰 위치 |
-| ACWSWaveManager | AActor | 라운드 진행, 적 스폰, 클리어 판정 |
-| ACWSPickupBase | AActor | 아이템 기본 클래스 |
-| ACWSHealthPickup | ACWSPickupBase | 회복 아이템 |
-| ACWSAmmoPickup | ACWSPickupBase | 탄약 보급 |
-| ACWSGameMode | AGameModeBase | 게임 규칙 |
-| ACWSGameState | AGameStateBase | 라운드/점수 상태 공유 |
+| 클래스 | 부모 클래스 | 역할 | 상태 |
+|---|---|---|---|
+| `ACWSPlayerCharacter` | `ACharacter` | 이동, 카메라, 사격/재장전 입력 | 구현 |
+| `UCWSHealthComponent` | `UActorComponent` | 체력, 엔진 데미지 수신, 사망 이벤트 | 구현 |
+| `UCWSHitscanWeaponComponent` | `UActorComponent` | 히트스캔, 탄약, 발사 간격, 포인트 데미지 | 구현 |
+| `ACWSEnemyBase` | `ACharacter` | 기본 적 체력, 이동속도, 근접 공격과 사망 | 구현 |
+| `ACWSEnemyAIController` | `AAIController` | 플레이어 추적 및 공격 거리 제어 | 구현 |
+| `ACWSSpawnPoint` | `AActor` | 방향별 스폰 위치 | 구현 |
+| `ACWSWaveManager` | `AActor` | 라운드 진행, 적 스폰, 사망/클리어 판정 | 구현 |
+| `ACWSGameMode` | `AGameModeBase` | 네이티브 Pawn/HUD 지정, 런타임 스모크 테스트 | 구현 |
+| `ACWSHUD` | `AHUD` | 조준점, 체력, 탄약, 라운드, 남은 적 표시 | 구현 |
+| Boss/Pickup 전용 클래스 | - | 보스 패턴, 회복/탄약 보급 | 후속 작업 |
 
 ## 3. 네이밍 규칙
 
@@ -62,8 +57,8 @@ GameMode BeginPlay
 → WaveManager Initialize
 → SpawnPoint 등록
 → StartRound(1)
-→ Spawn enemies by DataTable
-→ Enemy 사망 시 WaveManager에 보고
+→ 라운드 정의로 방향별 적 생성
+→ HealthComponent OnDeath가 WaveManager에 보고
 → RemainingEnemyCount == 0
 → RoundClear
 → 다음 라운드 또는 BossRound
@@ -79,8 +74,8 @@ GameMode BeginPlay
 
 ### 함수
 
-- ApplyHealthChange(float Delta)
-- TakeDamageFromActor(AActor* DamageCauser, float DamageAmount)
+- ApplyHealthChange(float Delta, AActor* InstigatorActor)
+- Kill(AActor* InstigatorActor)
 - IsAlive()
 - GetHealthPercent()
 
@@ -94,28 +89,28 @@ GameMode BeginPlay
 ### 변수
 
 - CurrentRound
-- RemainingEnemyCount
-- ActiveSpawnPoints
-- RoundDataTable
-- SpawnInterval
+- PendingSpawns
+- AliveEnemies
+- CachedSpawnPoints
+- Rounds
 - bRoundInProgress
 
 ### 함수
 
 - StartRound(int32 RoundNumber)
-- EndRound()
-- SpawnEnemyFromDirection(ECWSSpawnDirection Direction)
-- RegisterEnemy(ACWSEnemyBase* Enemy)
-- HandleEnemyDeath(ACWSEnemyBase* Enemy)
-- StartBossRound()
+- StartWaveSystem()
+- StopWaveSystem()
+- GetRemainingEnemyCount()
+- HandleSpawnedEnemyDeath(AActor* DeadActor)
+- HandleSpawnedEnemyDestroyed(AActor* DestroyedActor)
 
 ### 현재 구현
 
 - `ACWSWaveManager`가 Round 1~5 기본 데이터를 소유한다.
 - 방향 그룹을 라운드 로빈 순서로 큐에 넣어 한 방향에 스폰이 몰리지 않게 한다.
-- 생성된 적의 `OnDestroyed` 이벤트로 남은 적과 라운드 클리어를 판정한다.
+- 생성된 적의 `OnDeath` 이벤트로 즉시 남은 적을 갱신하고 `OnDestroyed`를 안전망으로 유지한다.
 - `OnRoundStarted`, `OnRemainingEnemyCountChanged`, `OnRoundCleared`, `OnAllRoundsCompleted` Blueprint delegate를 제공한다.
-- 현재 기본 적과 보스 슬롯은 `BP_CombatEnemy`를 사용하며 전용 클래스가 생기면 에디터에서 교체한다.
+- 현재 기본 적과 보스 슬롯은 네이티브 `ACWSEnemyBase`를 사용하며 전용 클래스가 생기면 교체한다.
 
 ## 7. SpawnPoint 설계
 
@@ -135,22 +130,15 @@ GameMode BeginPlay
 
 ## 8. EnemyBase 설계
 
-### 변수
+`ACWSEnemyBase`는 체력 60, 이동속도 350, 근접 공격 거리/데미지/간격을 제공한다. `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `ApplyDamage`를 호출한다. 사망하면 이동과 충돌을 끄고 웨이브 매니저에 `OnDeath`를 전달한다.
 
-- EnemyType
-- AttackDamage
-- AttackRange
-- MoveSpeed
-- ScoreValue
+## 9. 플레이 가능한 Round 1 검증
 
-### 함수
+- `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
+- `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점과 `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
+- `run_round_one_smoke.ps1`: 실제 게임 월드에서 플레이어 생성, 적 이동, 사망, Round 1 클리어 검사
 
-- InitializeFromData()
-- StartChasePlayer()
-- Attack()
-- Die()
-
-## 9. 확장 가능 구조
+## 10. 확장 가능 구조
 
 나중에 아래 기능을 추가하기 쉽도록 만든다.
 

@@ -1,5 +1,7 @@
 #include "Wave/CWSWaveManager.h"
 
+#include "Components/CWSHealthComponent.h"
+#include "Enemy/CWSEnemyBase.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
@@ -28,8 +30,7 @@ namespace
 ACWSWaveManager::ACWSWaveManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	DefaultEnemyClass = TSoftClassPtr<APawn>(
-		FSoftObjectPath(TEXT("/Game/Variant_Combat/Blueprints/AI/BP_CombatEnemy.BP_CombatEnemy_C")));
+	DefaultEnemyClass = ACWSEnemyBase::StaticClass();
 	BossEnemyClass = DefaultEnemyClass;
 
 	BuildDefaultRounds();
@@ -80,6 +81,17 @@ void ACWSWaveManager::StopWaveSystem()
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearAllTimersForObject(this);
+	}
+	for (const TWeakObjectPtr<AActor>& Enemy : AliveEnemies)
+	{
+		if (AActor* EnemyActor = Enemy.Get())
+		{
+			EnemyActor->OnDestroyed.RemoveDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDestroyed);
+			if (UCWSHealthComponent* Health = EnemyActor->FindComponentByClass<UCWSHealthComponent>())
+			{
+				Health->OnDeath.RemoveDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDeath);
+			}
+		}
 	}
 	PendingSpawns.Reset();
 	AliveEnemies.Reset();
@@ -264,10 +276,14 @@ void ACWSWaveManager::SpawnNextEnemy()
 	if (!SpawnPoint)
 	{
 		UE_LOG(LogCWSWave, Error, TEXT("No enabled spawn point for direction %s."), *UEnum::GetValueAsString(PendingSpawn.Direction));
+		StopWaveSystem();
+		return;
 	}
 	else if (!EnemyClass)
 	{
 		UE_LOG(LogCWSWave, Error, TEXT("No enemy class configured for round %d."), CurrentRound);
+		StopWaveSystem();
+		return;
 	}
 	else
 	{
@@ -281,6 +297,10 @@ void ACWSWaveManager::SpawnNextEnemy()
 				SpawnedEnemy->SpawnDefaultController();
 			}
 			SpawnedEnemy->OnDestroyed.AddDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDestroyed);
+			if (UCWSHealthComponent* Health = SpawnedEnemy->FindComponentByClass<UCWSHealthComponent>())
+			{
+				Health->OnDeath.AddDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDeath);
+			}
 			AliveEnemies.Add(SpawnedEnemy);
 			UE_LOG(
 				LogCWSWave,
@@ -290,6 +310,12 @@ void ACWSWaveManager::SpawnNextEnemy()
 				*GetNameSafe(EnemyClass),
 				*UEnum::GetValueAsString(PendingSpawn.Direction),
 				GetRemainingEnemyCount());
+		}
+		else
+		{
+			UE_LOG(LogCWSWave, Error, TEXT("Failed to spawn enemy for round %d."), CurrentRound);
+			StopWaveSystem();
+			return;
 		}
 	}
 
@@ -385,8 +411,30 @@ ACWSSpawnPoint* ACWSWaveManager::SelectSpawnPoint(const ECWSSpawnDirection Direc
 
 void ACWSWaveManager::HandleSpawnedEnemyDestroyed(AActor* DestroyedActor)
 {
-	AliveEnemies.RemoveAll(
-		[DestroyedActor](const TWeakObjectPtr<AActor>& Enemy) { return !Enemy.IsValid() || Enemy.Get() == DestroyedActor; });
+	RemoveTrackedEnemy(DestroyedActor);
+}
+
+void ACWSWaveManager::HandleSpawnedEnemyDeath(AActor* DeadActor)
+{
+	if (DeadActor)
+	{
+		DeadActor->OnDestroyed.RemoveDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDestroyed);
+	}
+	RemoveTrackedEnemy(DeadActor);
+}
+
+void ACWSWaveManager::RemoveTrackedEnemy(AActor* EnemyActor)
+{
+	const int32 RemovedCount = AliveEnemies.RemoveAll(
+		[EnemyActor](const TWeakObjectPtr<AActor>& Enemy)
+		{
+			return !Enemy.IsValid() || Enemy.Get() == EnemyActor;
+		});
+	if (RemovedCount <= 0)
+	{
+		return;
+	}
+
 	BroadcastRemainingEnemyCount();
 	UE_LOG(LogCWSWave, Log, TEXT("Enemy removed from round %d. Remaining=%d"), CurrentRound, GetRemainingEnemyCount());
 	EvaluateRoundCompletion();

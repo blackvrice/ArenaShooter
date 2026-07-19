@@ -25,9 +25,10 @@ SPAWN_POINTS = {
 def native_classes():
     wave_manager_class = getattr(unreal, "CWSWaveManager", None)
     spawn_point_class = getattr(unreal, "CWSSpawnPoint", None)
-    if not wave_manager_class or not spawn_point_class:
+    enemy_class = getattr(unreal, "CWSEnemyBase", None)
+    if not wave_manager_class or not spawn_point_class or not enemy_class:
         raise RuntimeError("ArenaShooter C++ wave classes are unavailable. Build ArenaShooterEditor first.")
-    return wave_manager_class, spawn_point_class
+    return wave_manager_class, spawn_point_class, enemy_class
 
 
 def generated_actors(actor_subsystem):
@@ -98,7 +99,7 @@ def read_round_totals(manager):
 
 
 def validate(actor_subsystem):
-    wave_manager_class, spawn_point_class = native_classes()
+    wave_manager_class, spawn_point_class, enemy_class = native_classes()
     managers = [actor for actor in actor_subsystem.get_all_level_actors() if isinstance(actor, wave_manager_class)]
     spawn_points = [actor for actor in actor_subsystem.get_all_level_actors() if isinstance(actor, spawn_point_class)]
     if len(managers) != 1:
@@ -127,6 +128,8 @@ def validate(actor_subsystem):
         raise RuntimeError(f"Unexpected round totals: {round_totals}")
     if not manager.get_editor_property("default_enemy_class"):
         raise RuntimeError("CWSWaveManager has no default enemy class")
+    if manager.get_editor_property("default_enemy_class").get_path_name() != "/Script/ArenaShooter.CWSEnemyBase":
+        raise RuntimeError("CWSWaveManager does not use CWSEnemyBase")
 
     summary = {
         "manager": manager.get_actor_label(),
@@ -139,7 +142,7 @@ def validate(actor_subsystem):
 
 
 def build(actor_subsystem):
-    wave_manager_class, spawn_point_class = native_classes()
+    wave_manager_class, spawn_point_class, enemy_class = native_classes()
     old_actors = generated_actors(actor_subsystem)
     old_package_files = [actor_package_filename(actor) for actor in old_actors]
     old_package_files.extend(generated_external_object_files())
@@ -152,6 +155,9 @@ def build(actor_subsystem):
         unreal.Rotator(0.0, 0.0, 0.0),
     )
     set_common_actor_properties(manager, "CWS_WaveManager", "Gameplay/Wave", ["CWS_WaveManager"])
+    manager.set_editor_property("default_enemy_class", enemy_class)
+    manager.set_editor_property("boss_enemy_class", enemy_class)
+    manager.set_editor_property("initial_start_delay", 2.0)
 
     for direction, (location, direction_tag) in SPAWN_POINTS.items():
         spawn_point = actor_subsystem.spawn_actor_from_class(

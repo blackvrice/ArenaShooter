@@ -2,7 +2,7 @@
 
 ## 1. 현재 기준
 
-이 문서는 2026-07-12에 저장된 `/Game/Variant_Combat/Lvl_Combat`의 수동 블록아웃을 기준으로 한다. 현재 맵의 저장된 액터 배치가 좌표와 크기의 기준이며, 첨부 PPTX와 `Tools/Editor/build_cws_blockout.py`는 이전 중앙 거점 설계의 참고 자료로만 사용한다.
+이 문서는 2026-07-19에 저장된 `/Game/Variant_Combat/Lvl_Combat`의 수동 블록아웃과 플레이 가능한 Round 1 구성을 기준으로 한다. 현재 맵의 저장된 액터 배치가 좌표와 크기의 기준이며, 첨부 PPTX와 `Tools/Editor/build_cws_blockout.py`는 이전 중앙 거점 설계의 참고 자료로만 사용한다.
 
 Unreal Engine 기준 `1 uu = 1 cm`다. 따라서 `10,000 uu = 100 m`다.
 
@@ -155,19 +155,21 @@ X- ------------------------------------------------------------- X+
 | Sky Atmosphere | `Lighting` 폴더에 배치됨 |
 | Exponential Height Fog | `Lighting` 폴더에 배치됨 |
 | Recast NavMesh 데이터 | 외부 액터로 존재 |
-| NavMesh Bounds Volume | 미배치 |
+| NavMesh Bounds Volume | `CWS_NavMeshBounds`, 중심 `(0, 0, 1,000)`, 스케일 `(55, 55, 10)` |
+| PlayerStart | `CWS_PlayerStart`, `(0, 1,200, 450)` |
+| GameMode | 네이티브 `ACWSGameMode` |
+| Player | 네이티브 `ACWSPlayerCharacter`, 체력/히트스캔 무기 포함 |
+| Enemy | 네이티브 `ACWSEnemyBase`, NavMesh 추적 및 근접 공격 |
 | `CWS_WaveManager` | 맵에 배치됨, 게임 시작 시 자동 실행 |
 | 방향별 `CWS_SpawnPoint` | 8방향 + 중앙, 총 9개 배치됨 |
 
-## 6. 아직 맵에 없는 전투 요소
+## 6. 후속 전투 요소
 
-아래 항목은 블루프린트 에셋 또는 이전 설계에는 존재하지만 현재 저장된 `Lvl_Combat`에는 배치되어 있지 않다.
+플레이 가능한 Round 1에 필요한 시작점, 내비게이션, 기본 플레이어/적/무기/HUD는 구현됐다. 아래 항목은 다음 확장 대상이다.
 
 | 항목 | 현재 상태 | 다음 결정 |
 |---|---|---|
-| PlayerStart | 미배치 | 중앙 또는 체크포인트 인근 시작 위치 결정 |
-| Fast/Tank/Boss 전용 클래스 | 미구현 | 현재는 모든 그룹이 `BP_CombatEnemy` 사용 |
-| NavMesh Bounds Volume | 미배치 | 전체 바닥과 플랫폼/경사로를 포함하도록 배치 |
+| Fast/Tank/Boss 전용 클래스 | 미구현 | 현재는 모든 그룹이 `ACWSEnemyBase` 사용 |
 | 중앙 전투 링 | 미배치 | 유지할지 제거할지 결정 |
 | 보스 전용 별도 스폰 지점 | 미배치 | 현재 Round 5는 Center SpawnPoint를 보스 슬롯으로 재사용 |
 | 회복/보급 아이템 | 미배치 | 이동 동선 확정 후 배치 |
@@ -176,7 +178,9 @@ X- ------------------------------------------------------------- X+
 
 ## 7. 웨이브 생성 구현
 
-`ACWSWaveManager`가 게임 시작 후 자동으로 Round 1을 준비한다. 각 라운드는 3초 준비 시간 후 방향별 `ACWSSpawnPoint`에서 적을 순차 생성하며, 생성된 적의 `OnDestroyed` 이벤트로 남은 적 수를 갱신한다. 모든 적이 제거되면 5초 후 다음 라운드를 시작한다.
+`ACWSWaveManager`가 게임 시작 후 자동으로 Round 1을 준비한다. 각 라운드는 준비 시간 후 방향별 `ACWSSpawnPoint`에서 `ACWSEnemyBase`를 순차 생성한다. 체력 컴포넌트의 `OnDeath`를 우선 사용하고 `OnDestroyed`를 안전망으로 사용해 남은 적 수와 라운드 클리어를 갱신한다. 모든 적이 제거되면 5초 후 다음 라운드를 시작한다.
+
+`DefaultEngine.ini`의 Recast NavMesh는 `Dynamic` 런타임 생성으로 설정했다. 2026-07-19 헤드리스 게임 스모크 테스트에서 Round 1의 적 8마리 생성, NavMesh 이동, 사망 처리, 남은 적 0, 라운드 클리어까지 확인했다.
 
 | 방향 | 위치 `(X, Y, Z)` |
 |---|---:|
@@ -198,7 +202,7 @@ X- ------------------------------------------------------------- X+
 | 4R | 22 | 8 | 4 | 0 | 34 | 전체 8방향 |
 | 5R | 8 | 4 | 2 | 1 | 15 | 전체 8방향 + Center |
 
-현재 Fast/Tank/Boss 전용 적 클래스는 없으므로 위 타입 구분은 밸런스 목표다. 런타임에서는 모든 그룹이 `BP_CombatEnemy`를 사용하며, `BossEnemyClass`를 지정하면 Round 5의 Center 그룹만 별도 클래스로 교체된다.
+현재 Fast/Tank/Boss 전용 적 클래스는 없으므로 위 타입 구분은 밸런스 목표다. 런타임에서는 모든 그룹이 `ACWSEnemyBase`를 사용하며, `BossEnemyClass`를 지정하면 Round 5의 Center 그룹만 별도 클래스로 교체된다.
 
 ## 8. 권장 체력과 데미지
 
@@ -227,6 +231,8 @@ X- ------------------------------------------------------------- X+
 - 변 중앙 방은 `Tools/Editor/run_build_cardinal_rooms.ps1`로 재생성하거나 검사한다.
 - 중앙 방은 `Tools/Editor/run_build_central_room.ps1`로 재생성하거나 검사한다.
 - 웨이브 매니저와 9개 스폰 지점은 `Tools/Editor/run_build_wave_spawning.ps1`로 재생성하거나 검사한다.
+- PlayerStart, NavMesh Bounds, 네이티브 런타임 클래스 연결은 `Tools/Editor/run_build_playable_round_one.ps1`로 재생성하거나 검사한다.
+- Round 1 실제 게임 검증은 `Tools/Editor/run_round_one_smoke.ps1`로 실행한다.
 - 자동화 스크립트를 다시 사용할 경우 10,000 x 10,000 지형, 모서리 플랫폼, 경사로, 체크포인트 설계를 먼저 반영한다.
 - 액터 이름은 `Cube`, `Cube2` 같은 기본 이름 대신 역할 중심 이름으로 정리한다.
 - 웨이브 스폰 좌표는 100 m 전장의 실제 플레이 테스트 후 확정한다.

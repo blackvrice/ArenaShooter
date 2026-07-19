@@ -100,6 +100,11 @@ private:
 	UFUNCTION()
 	void HandleSpawnedEnemyDestroyed(AActor* DestroyedActor);
 
+	UFUNCTION()
+	void HandleSpawnedEnemyDeath(AActor* DeadActor);
+
+	void RemoveTrackedEnemy(AActor* EnemyActor);
+
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<ACWSSpawnPoint>> CachedSpawnPoints;
 

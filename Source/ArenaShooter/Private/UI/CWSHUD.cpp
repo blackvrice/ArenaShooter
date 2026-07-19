@@ -1,0 +1,110 @@
+#include "UI/CWSHUD.h"
+
+#include "Components/CWSHealthComponent.h"
+#include "Components/CWSHitscanWeaponComponent.h"
+#include "Engine/Canvas.h"
+#include "Engine/Engine.h"
+#include "EngineUtils.h"
+#include "GameFramework/PlayerController.h"
+#include "Wave/CWSWaveManager.h"
+
+void ACWSHUD::DrawHUD()
+{
+	Super::DrawHUD();
+	if (!Canvas || !GEngine)
+	{
+		return;
+	}
+
+	const float CenterX = Canvas->ClipX * 0.5f;
+	const float CenterY = Canvas->ClipY * 0.5f;
+	DrawLine(CenterX - 8.0f, CenterY, CenterX + 8.0f, CenterY, FLinearColor::White, 1.5f);
+	DrawLine(CenterX, CenterY - 8.0f, CenterX, CenterY + 8.0f, FLinearColor::White, 1.5f);
+
+	APlayerController* PlayerController = GetOwningPlayerController();
+	APawn* PlayerPawn = PlayerController ? PlayerController->GetPawn() : nullptr;
+	const UCWSHealthComponent* Health = PlayerPawn ? PlayerPawn->FindComponentByClass<UCWSHealthComponent>() : nullptr;
+	const UCWSHitscanWeaponComponent* Weapon =
+		PlayerPawn ? PlayerPawn->FindComponentByClass<UCWSHitscanWeaponComponent>() : nullptr;
+	ACWSWaveManager* WaveManager = FindWaveManager();
+
+	float TextY = 35.0f;
+	UFont* Font = GEngine->GetMediumFont();
+	if (Health)
+	{
+		DrawText(
+			FString::Printf(TEXT("HEALTH  %.0f / %.0f"), Health->GetCurrentHealth(), Health->GetMaxHealth()),
+			Health->IsAlive() ? FLinearColor::White : FLinearColor::Red,
+			35.0f,
+			TextY,
+			Font,
+			1.0f,
+			false);
+		TextY += 28.0f;
+	}
+	if (Weapon)
+	{
+		DrawText(
+			FString::Printf(TEXT("AMMO    %d / %d"), Weapon->GetCurrentAmmo(), Weapon->GetMaxAmmo()),
+			FLinearColor::White,
+			35.0f,
+			TextY,
+			Font,
+			1.0f,
+			false);
+		TextY += 28.0f;
+	}
+	if (WaveManager)
+	{
+		DrawText(
+			FString::Printf(TEXT("ROUND   %d / 5"), WaveManager->GetCurrentRound()),
+			FLinearColor::White,
+			35.0f,
+			TextY,
+			Font,
+			1.0f,
+			false);
+		TextY += 28.0f;
+		DrawText(
+			FString::Printf(TEXT("ENEMIES %d"), WaveManager->GetRemainingEnemyCount()),
+			FLinearColor::White,
+			35.0f,
+			TextY,
+			Font,
+			1.0f,
+			false);
+	}
+
+	DrawText(
+		TEXT("LMB: FIRE   RMB: RELOAD   WASD: MOVE"),
+		FLinearColor(0.7f, 0.7f, 0.7f),
+		35.0f,
+		Canvas->ClipY - 45.0f,
+		GEngine->GetSmallFont(),
+		1.0f,
+		false);
+
+	if (Health && !Health->IsAlive())
+	{
+		DrawText(TEXT("GAME OVER"), FLinearColor::Red, CenterX - 95.0f, CenterY - 70.0f, Font, 1.8f, false);
+	}
+	else if (WaveManager && WaveManager->bAllRoundsCompleted)
+	{
+		DrawText(TEXT("ARENA CLEARED"), FLinearColor::Green, CenterX - 130.0f, CenterY - 70.0f, Font, 1.8f, false);
+	}
+}
+
+ACWSWaveManager* ACWSHUD::FindWaveManager()
+{
+	if (CachedWaveManager.IsValid())
+	{
+		return CachedWaveManager.Get();
+	}
+
+	for (TActorIterator<ACWSWaveManager> It(GetWorld()); It; ++It)
+	{
+		CachedWaveManager = *It;
+		return *It;
+	}
+	return nullptr;
+}
