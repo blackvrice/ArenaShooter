@@ -8,9 +8,11 @@ class ACWSEnemyBase;
 class ACWSBossEnemy;
 class ACWSWaveManager;
 class ACWSPlayerCharacter;
+class ACWSSupplyPickup;
 class UCWSHealthComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCWSGameFlowEvent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSSupplySpawnedEvent, AActor*, SupplyActor);
 
 UCLASS()
 class ARENASHOOTER_API ACWSGameMode : public AGameModeBase
@@ -40,12 +42,17 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Game Flow|Events")
 	FCWSGameFlowEvent OnGameCleared;
 
+	UPROPERTY(BlueprintAssignable, Category = "Game Flow|Events")
+	FCWSSupplySpawnedEvent OnSupplySpawned;
+
 private:
 	void BindGameplayActors();
 	void ConfigureAllRoundsSmokeTimings();
 	void PrepareSmokeWeaponTarget(ACWSPlayerCharacter* PlayerCharacter);
 	void RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharacter);
+	void RunSmokeSupplyStep(ACWSPlayerCharacter* PlayerCharacter);
 	void RunCombatSmokeStep();
+	void SpawnRoundClearSupply(int32 RoundNumber);
 	void FinishSmokeTest(bool bSucceeded, const TCHAR* Reason);
 
 	UFUNCTION()
@@ -60,11 +67,14 @@ private:
 	TWeakObjectPtr<ACWSWaveManager> WaveManager;
 	TWeakObjectPtr<UCWSHealthComponent> PlayerHealth;
 	TWeakObjectPtr<ACWSEnemyBase> SmokeWeaponTarget;
+	TWeakObjectPtr<ACWSSupplyPickup> LastRoundSupply;
 	TMap<TWeakObjectPtr<ACWSEnemyBase>, FVector> SmokeEnemyStartLocations;
 	FTimerHandle GameplayBindTimer;
 	FTimerHandle SmokeStepTimer;
 	float SmokeStartTime = 0.0f;
 	int32 SmokeHighestRoundCleared = 0;
+	int32 SmokeAmmoBeforeReload = 0;
+	int32 SmokeReserveBeforeReload = 0;
 	bool bGameOver = false;
 	bool bGameCleared = false;
 	bool bSmokeTestEnabled = false;
@@ -82,6 +92,10 @@ private:
 	bool bSmokeWeaponAimPrimed = false;
 	bool bSmokeSawWeaponDamage = false;
 	bool bSmokeWeaponTargetKilled = false;
+	bool bSmokeReloadStarted = false;
+	bool bSmokeReloadCompleted = false;
+	bool bSmokeAmmoSupplyCollected = false;
+	bool bSmokeHealthSupplyCollected = false;
 	bool bSmokeRoundOneCleared = false;
 	bool bSmokeStoppedAfterRoundOne = false;
 	bool bSmokeAllRoundsCleared = false;

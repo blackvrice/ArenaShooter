@@ -11,6 +11,7 @@
 #include "HAL/PlatformMisc.h"
 #include "Kismet/GameplayStatics.h"
 #include "Player/CWSPlayerCharacter.h"
+#include "Pickup/CWSSupplyPickup.h"
 #include "TimerManager.h"
 #include "UI/CWSHUD.h"
 #include "Wave/CWSWaveManager.h"
@@ -194,6 +195,93 @@ void ACWSGameMode::RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharacter)
 	}
 }
 
+void ACWSGameMode::RunSmokeSupplyStep(ACWSPlayerCharacter* PlayerCharacter)
+{
+	if (!PlayerCharacter || !bSmokeWeaponTargetKilled)
+	{
+		return;
+	}
+
+	UCWSHitscanWeaponComponent* Weapon = PlayerCharacter->GetWeaponComponent();
+	UCWSHealthComponent* Health = PlayerCharacter->GetHealthComponent();
+	if (!Weapon || !Health)
+	{
+		return;
+	}
+
+	if (!bSmokeReloadStarted)
+	{
+		SmokeAmmoBeforeReload = Weapon->GetCurrentAmmo();
+		SmokeReserveBeforeReload = Weapon->GetReserveAmmo();
+		bSmokeReloadStarted = Weapon->Reload() && Weapon->IsReloading();
+		return;
+	}
+
+	if (!bSmokeReloadCompleted)
+	{
+		if (Weapon->IsReloading())
+		{
+			return;
+		}
+		bSmokeReloadCompleted =
+			Weapon->GetCurrentAmmo() > SmokeAmmoBeforeReload &&
+			Weapon->GetCurrentAmmo() == Weapon->GetMaxAmmo() &&
+			Weapon->GetReserveAmmo() < SmokeReserveBeforeReload;
+		if (bSmokeReloadCompleted)
+		{
+			UE_LOG(LogCWSGame, Display, TEXT("Timed reload consumed reserve ammo and refilled the magazine."));
+		}
+	}
+
+	if (!bSmokeRoundOneCleared || !bSmokeReloadCompleted)
+	{
+		return;
+	}
+
+	if (!bSmokeAmmoSupplyCollected)
+	{
+		if (ACWSSupplyPickup* AmmoSupply = LastRoundSupply.Get())
+		{
+			const int32 ReserveBeforeSupply = Weapon->GetReserveAmmo();
+			bSmokeAmmoSupplyCollected =
+				AmmoSupply->GetSupplyType() == ECWSSupplyType::Ammo &&
+				AmmoSupply->TryCollect(PlayerCharacter) &&
+				Weapon->GetReserveAmmo() > ReserveBeforeSupply;
+			if (bSmokeAmmoSupplyCollected)
+			{
+				UE_LOG(LogCWSGame, Display, TEXT("Ammo supply increased reserve ammo."));
+			}
+		}
+		return;
+	}
+
+	if (!bSmokeHealthSupplyCollected)
+	{
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		ACWSSupplyPickup* HealthSupply = GetWorld()->SpawnActor<ACWSSupplyPickup>(
+			ACWSSupplyPickup::StaticClass(),
+			PlayerCharacter->GetActorLocation() + FVector(0.0f, 150.0f, 30.0f),
+			FRotator::ZeroRotator,
+			SpawnParameters);
+		if (!HealthSupply)
+		{
+			return;
+		}
+
+		HealthSupply->ConfigureSupply(ECWSSupplyType::Health);
+		Health->ApplyHealthChange(Health->GetMaxHealth(), this);
+		Health->ApplyHealthChange(-20.0f, this);
+		const float HealthBeforeSupply = Health->GetCurrentHealth();
+		bSmokeHealthSupplyCollected =
+			HealthSupply->TryCollect(PlayerCharacter) && Health->GetCurrentHealth() > HealthBeforeSupply;
+		if (bSmokeHealthSupplyCollected)
+		{
+			UE_LOG(LogCWSGame, Display, TEXT("Health supply restored player health."));
+		}
+	}
+}
+
 void ACWSGameMode::RunCombatSmokeStep()
 {
 	if (bSmokeFinished)
@@ -219,7 +307,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 	{
 		if (PlayerCharacter && WaveManager.IsValid() && PlayerHealth.IsValid() && !bGameOver && !bGameCleared)
 		{
-			FinishSmokeTest(true, TEXT("Hitscan combat, player death, wave stop, and level restart were verified"));
+			FinishSmokeTest(true, TEXT("Hitscan combat, timed reload, supplies, player death, wave stop, and level restart were verified"));
 		}
 		else if (World->GetTimeSeconds() - SmokeStartTime > 10.0f)
 		{
@@ -232,6 +320,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 	{
 		PrepareSmokeWeaponTarget(PlayerCharacter);
 		RunSmokeWeaponStep(PlayerCharacter);
+		RunSmokeSupplyStep(PlayerCharacter);
 	}
 
 	for (TActorIterator<ACWSEnemyBase> It(World); It; ++It)
@@ -326,7 +415,8 @@ void ACWSGameMode::RunCombatSmokeStep()
 		UE_LOG(LogCWSGame, Display, TEXT("Round 1 smoke paused the wave system before the player-death check."));
 	}
 
-	if (!bSmokeTestAllRounds && bSmokeRoundOneCleared && bSmokeWeaponTargetKilled && PlayerCharacter)
+	if (!bSmokeTestAllRounds && bSmokeRoundOneCleared && bSmokeWeaponTargetKilled &&
+		bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected && PlayerCharacter)
 	{
 		UCWSHealthComponent* Health = PlayerCharacter->GetHealthComponent();
 		if (!bSmokeAppliedPlayerDamage && Health && Health->IsAlive())
@@ -342,7 +432,8 @@ void ACWSGameMode::RunCombatSmokeStep()
 		else if (bSmokeSawPlayerDeath && bGameOver && WaveManager.IsValid() && !WaveManager->IsRoundInProgress())
 		{
 			const bool bCombatFlowVerified =
-				bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage && CanRestart();
+				bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage &&
+				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected && CanRestart();
 			if (!bCombatFlowVerified)
 			{
 				FinishSmokeTest(false, TEXT("Combat flow reached game over without satisfying restart prerequisites"));
@@ -360,10 +451,11 @@ void ACWSGameMode::RunCombatSmokeStep()
 	{
 		FinishSmokeTest(
 			bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage &&
+				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected &&
 				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
 				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
 				SmokeHighestRoundCleared == 5 && bGameCleared,
-			TEXT("Hitscan damage, dedicated boss phases and pattern damage, and all five rounds were verified"));
+			TEXT("Hitscan damage, timed reload, supplies, dedicated boss phases and pattern damage, and all five rounds were verified"));
 		return;
 	}
 
@@ -378,6 +470,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 
 void ACWSGameMode::HandleRoundCleared(const int32 RoundNumber)
 {
+	SpawnRoundClearSupply(RoundNumber);
 	if (!bSmokeTestEnabled)
 	{
 		return;
@@ -388,6 +481,45 @@ void ACWSGameMode::HandleRoundCleared(const int32 RoundNumber)
 	{
 		bSmokeRoundOneCleared = true;
 	}
+}
+
+void ACWSGameMode::SpawnRoundClearSupply(const int32 RoundNumber)
+{
+	if (RoundNumber < 1 || RoundNumber >= 5 || bGameOver || !GetWorld())
+	{
+		return;
+	}
+
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (!PlayerPawn)
+	{
+		return;
+	}
+
+	FActorSpawnParameters SpawnParameters;
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	const FVector SpawnLocation =
+		PlayerPawn->GetActorLocation() + PlayerPawn->GetActorForwardVector() * 250.0f + FVector(0.0f, 0.0f, 30.0f);
+	ACWSSupplyPickup* Supply = GetWorld()->SpawnActor<ACWSSupplyPickup>(
+		ACWSSupplyPickup::StaticClass(),
+		SpawnLocation,
+		FRotator::ZeroRotator,
+		SpawnParameters);
+	if (!Supply)
+	{
+		return;
+	}
+
+	const ECWSSupplyType SupplyType = RoundNumber % 2 == 1 ? ECWSSupplyType::Ammo : ECWSSupplyType::Health;
+	Supply->ConfigureSupply(SupplyType);
+	LastRoundSupply = Supply;
+	OnSupplySpawned.Broadcast(Supply);
+	UE_LOG(
+		LogCWSGame,
+		Display,
+		TEXT("Round %d clear spawned a %s supply."),
+		RoundNumber,
+		SupplyType == ECWSSupplyType::Ammo ? TEXT("ammo") : TEXT("health"));
 }
 
 void ACWSGameMode::HandleAllRoundsCompleted()

@@ -29,15 +29,15 @@ Blueprint
 |---|---|---|---|
 | `ACWSPlayerCharacter` | `ACharacter` | 이동, 카메라, 사격/재장전 입력 | 구현 |
 | `UCWSHealthComponent` | `UActorComponent` | 체력, 엔진 데미지 수신, 사망 이벤트 | 구현 |
-| `UCWSHitscanWeaponComponent` | `UActorComponent` | 히트스캔, 탄약, 발사 간격, 포인트 데미지 | 구현 |
+| `UCWSHitscanWeaponComponent` | `UActorComponent` | 히트스캔, 탄창/예비 탄약, 시간 기반 재장전, 발사 간격, 포인트 데미지 | 구현 |
 | `ACWSEnemyBase` | `ACharacter` | 기본 적 체력, 이동속도, 근접 공격과 사망 | 구현 |
 | `ACWSEnemyAIController` | `AAIController` | 플레이어 추적 및 공격 거리 제어 | 구현 |
 | `ACWSSpawnPoint` | `AActor` | 방향별 스폰 위치 | 구현 |
 | `ACWSWaveManager` | `AActor` | 라운드 진행, 적 스폰, 사망/클리어 판정 | 구현 |
 | `ACWSGameMode` | `AGameModeBase` | Pawn/HUD 지정, 게임 오버·클리어·레벨 재시작, 런타임 스모크 테스트 | 구현 |
-| `ACWSHUD` | `AHUD` | 조준점, 체력, 탄약, 라운드, 남은 적 표시 | 구현 |
+| `ACWSHUD` | `AHUD` | 조준점, 체력, 탄창/예비 탄약, 재장전 상태, 라운드, 남은 적 표시 | 구현 |
 | `ACWSBossEnemy` | `ACWSEnemyBase` | 3단계 페이즈, Ground Slam, 넉백 Shockwave | 구현 |
-| Pickup 전용 클래스 | - | 회복/탄약 보급 | 후속 작업 |
+| `ACWSSupplyPickup` | `AActor` | 오버랩 수집, 체력 +40 또는 예비 탄약 +30, 회전/부유 표시 | 구현 |
 
 ## 3. 네이밍 규칙
 
@@ -138,13 +138,15 @@ GameMode BeginPlay
 
 - `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
 - `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점과 `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
-- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 적 NavMesh 이동, Round 1 클리어, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
-- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰과 각 라운드 클리어, 최종 게임 클리어 검사
+- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
+- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, Round 1~4 보급 생성, 각 라운드 클리어와 최종 게임 클리어 검사
 - 전체 라운드 검증은 전용 Boss 클래스, 체력 1200, 최종 페이즈 전환, Ground Slam과 Shockwave 피해/넉백 경로도 함께 검사한다.
 - Warm DDC 직렬화 오류가 감지되면 스모크 러너가 격리된 Cold DDC로 한 번 자동 재시도한다.
 - `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사
 
 적 Capsule은 `ECC_Visibility`를 차단하므로 플레이어 무기의 Visibility 채널 라인트레이스가 실제 적에게 도달한다. 플레이어 사망 시 `ACWSGameMode`가 `ACWSWaveManager::StopWaveSystem()`을 호출하고 HUD에 게임 오버와 Enter 재시작 안내를 표시한다.
+
+무기는 60발 탄창과 시작 예비 탄약 90발(최대 120발)을 사용한다. 재장전은 1.2초 동안 발사를 잠그고 완료 시 필요한 수량만 예비 탄약에서 탄창으로 옮긴다. `ACWSGameMode`는 Round 1~4 클리어 때 홀수 라운드에는 탄약, 짝수 라운드에는 체력 보급을 플레이어 전방에 생성한다.
 
 ## 10. 확장 가능 구조
 

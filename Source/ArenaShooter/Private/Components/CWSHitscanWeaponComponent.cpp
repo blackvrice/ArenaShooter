@@ -4,6 +4,7 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
+#include "TimerManager.h"
 
 UCWSHitscanWeaponComponent::UCWSHitscanWeaponComponent()
 {
@@ -14,15 +15,32 @@ void UCWSHitscanWeaponComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	CurrentAmmo = MaxAmmo;
+	CurrentReserveAmmo = FMath::Clamp(StartingReserveAmmo, 0, MaxReserveAmmo);
+	bIsReloading = false;
 	OnAmmoChanged.Broadcast(CurrentAmmo, MaxAmmo);
+	OnReserveAmmoChanged.Broadcast(CurrentReserveAmmo, MaxReserveAmmo);
+}
+
+void UCWSHitscanWeaponComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(ReloadTimerHandle);
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 bool UCWSHitscanWeaponComponent::TryFire()
 {
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	UWorld* World = GetWorld();
-	if (!OwningPawn || !World || CurrentAmmo <= 0 || World->GetTimeSeconds() < NextAllowedFireTime)
+	if (!OwningPawn || !World || bIsReloading || World->GetTimeSeconds() < NextAllowedFireTime)
 	{
+		return false;
+	}
+	if (CurrentAmmo <= 0)
+	{
+		Reload();
 		return false;
 	}
 
@@ -63,8 +81,49 @@ bool UCWSHitscanWeaponComponent::TryFire()
 	return true;
 }
 
-void UCWSHitscanWeaponComponent::Reload()
+bool UCWSHitscanWeaponComponent::Reload()
 {
-	CurrentAmmo = MaxAmmo;
+	UWorld* World = GetWorld();
+	if (!World || bIsReloading || CurrentAmmo >= MaxAmmo || CurrentReserveAmmo <= 0)
+	{
+		return false;
+	}
+
+	bIsReloading = true;
+	OnReloadStateChanged.Broadcast(true);
+	World->GetTimerManager().SetTimer(
+		ReloadTimerHandle,
+		this,
+		&UCWSHitscanWeaponComponent::CompleteReload,
+		ReloadDuration,
+		false);
+	return true;
+}
+
+int32 UCWSHitscanWeaponComponent::AddReserveAmmo(const int32 Amount)
+{
+	if (Amount <= 0)
+	{
+		return 0;
+	}
+	const int32 OldReserveAmmo = CurrentReserveAmmo;
+	CurrentReserveAmmo = FMath::Clamp(CurrentReserveAmmo + Amount, 0, MaxReserveAmmo);
+	const int32 AddedAmmo = CurrentReserveAmmo - OldReserveAmmo;
+	if (AddedAmmo > 0)
+	{
+		OnReserveAmmoChanged.Broadcast(CurrentReserveAmmo, MaxReserveAmmo);
+	}
+	return AddedAmmo;
+}
+
+void UCWSHitscanWeaponComponent::CompleteReload()
+{
+	const int32 MissingAmmo = FMath::Max(MaxAmmo - CurrentAmmo, 0);
+	const int32 LoadedAmmo = FMath::Min(MissingAmmo, CurrentReserveAmmo);
+	CurrentAmmo += LoadedAmmo;
+	CurrentReserveAmmo -= LoadedAmmo;
+	bIsReloading = false;
 	OnAmmoChanged.Broadcast(CurrentAmmo, MaxAmmo);
+	OnReserveAmmoChanged.Broadcast(CurrentReserveAmmo, MaxReserveAmmo);
+	OnReloadStateChanged.Broadcast(false);
 }

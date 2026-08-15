@@ -48,8 +48,14 @@ void ACWSHUD::DrawHUD()
 	if (Weapon)
 	{
 		DrawText(
-			FString::Printf(TEXT("AMMO    %d / %d"), Weapon->GetCurrentAmmo(), Weapon->GetMaxAmmo()),
-			FLinearColor::White,
+			FString::Printf(
+				TEXT("AMMO    %d / %d   |   RESERVE %d / %d%s"),
+				Weapon->GetCurrentAmmo(),
+				Weapon->GetMaxAmmo(),
+				Weapon->GetReserveAmmo(),
+				Weapon->GetMaxReserveAmmo(),
+				Weapon->IsReloading() ? TEXT("   |   RELOADING") : TEXT("")),
+			Weapon->IsReloading() ? FLinearColor::Yellow : FLinearColor::White,
 			35.0f,
 			TextY,
 			Font,
