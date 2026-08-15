@@ -128,6 +128,10 @@ void ACWSWaveManager::StopWaveSystem()
 	AliveEnemies.Reset();
 	bRoundInProgress = false;
 	bWaveSystemStarted = false;
+	if (CurrentPhase != ECWSWavePhase::Completed)
+	{
+		SetWavePhase(ECWSWavePhase::Stopped);
+	}
 }
 
 void ACWSWaveManager::StartRound(const int32 RoundNumber)
@@ -159,6 +163,7 @@ void ACWSWaveManager::StartRound(const int32 RoundNumber)
 		&ACWSWaveManager::BeginCurrentRoundSpawning,
 		FMath::Max(RoundDefinition->PreRoundDelay, 0.01f),
 		false);
+	SetWavePhase(ECWSWavePhase::Preparing);
 
 	UE_LOG(LogCWSWave, Log, TEXT("Round %d prepared with %d enemies."), CurrentRound, PendingSpawns.Num());
 }
@@ -174,6 +179,32 @@ int32 ACWSWaveManager::GetRemainingEnemyCount() const
 		}
 	}
 	return PendingSpawns.Num() + ValidAliveEnemies;
+}
+
+float ACWSWaveManager::GetPhaseTimeRemaining() const
+{
+	const UWorld* World = GetWorld();
+	if (!World)
+	{
+		return 0.0f;
+	}
+
+	float Remaining = 0.0f;
+	if (CurrentPhase == ECWSWavePhase::Preparing)
+	{
+		Remaining = World->GetTimerManager().GetTimerRemaining(PreRoundTimerHandle);
+	}
+	else if (CurrentPhase == ECWSWavePhase::RoundCleared)
+	{
+		Remaining = World->GetTimerManager().GetTimerRemaining(PostRoundTimerHandle);
+	}
+	return FMath::Max(Remaining, 0.0f);
+}
+
+float ACWSWaveManager::GetPhaseElapsedTime() const
+{
+	const UWorld* World = GetWorld();
+	return World ? FMath::Max(World->GetTimeSeconds() - PhaseStartedTime, 0.0f) : 0.0f;
 }
 
 void ACWSWaveManager::BuildDefaultRounds()
@@ -260,6 +291,7 @@ void ACWSWaveManager::CacheSpawnPoints()
 void ACWSWaveManager::BeginCurrentRoundSpawning()
 {
 	bRoundInProgress = true;
+	SetWavePhase(ECWSWavePhase::Active);
 	OnRoundStarted.Broadcast(CurrentRound);
 	UE_LOG(LogCWSWave, Log, TEXT("Round %d started."), CurrentRound);
 	SpawnNextEnemy();
@@ -412,16 +444,16 @@ void ACWSWaveManager::EvaluateRoundCompletion()
 void ACWSWaveManager::CompleteCurrentRound()
 {
 	bRoundInProgress = false;
-	OnRoundCleared.Broadcast(CurrentRound);
-	BroadcastRemainingEnemyCount();
-	UE_LOG(LogCWSWave, Log, TEXT("Round %d cleared."), CurrentRound);
-
 	const int32 CurrentRoundIndex = Rounds.IndexOfByPredicate(
 		[this](const FCWSRoundDefinition& Definition) { return Definition.RoundNumber == CurrentRound; });
 	if (CurrentRoundIndex == INDEX_NONE || CurrentRoundIndex + 1 >= Rounds.Num())
 	{
 		bAllRoundsCompleted = true;
 		bWaveSystemStarted = false;
+		SetWavePhase(ECWSWavePhase::Completed);
+		OnRoundCleared.Broadcast(CurrentRound);
+		BroadcastRemainingEnemyCount();
+		UE_LOG(LogCWSWave, Log, TEXT("Round %d cleared."), CurrentRound);
 		OnAllRoundsCompleted.Broadcast();
 		UE_LOG(LogCWSWave, Log, TEXT("All rounds completed."));
 		return;
@@ -429,6 +461,10 @@ void ACWSWaveManager::CompleteCurrentRound()
 
 	const float Delay = FMath::Max(Rounds[CurrentRoundIndex].PostRoundDelay, 0.01f);
 	GetWorldTimerManager().SetTimer(PostRoundTimerHandle, this, &ACWSWaveManager::StartNextRound, Delay, false);
+	SetWavePhase(ECWSWavePhase::RoundCleared);
+	OnRoundCleared.Broadcast(CurrentRound);
+	BroadcastRemainingEnemyCount();
+	UE_LOG(LogCWSWave, Log, TEXT("Round %d cleared."), CurrentRound);
 }
 
 void ACWSWaveManager::StartNextRound()
@@ -439,6 +475,24 @@ void ACWSWaveManager::StartNextRound()
 	{
 		StartRound(Rounds[CurrentRoundIndex + 1].RoundNumber);
 	}
+}
+
+void ACWSWaveManager::SetWavePhase(const ECWSWavePhase NewPhase)
+{
+	if (CurrentPhase == NewPhase)
+	{
+		return;
+	}
+
+	CurrentPhase = NewPhase;
+	PhaseStartedTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
+	OnWavePhaseChanged.Broadcast(CurrentPhase, CurrentRound);
+	UE_LOG(
+		LogCWSWave,
+		Display,
+		TEXT("CWS_WAVE_PHASE: %s Round=%d"),
+		*UEnum::GetValueAsString(CurrentPhase),
+		CurrentRound);
 }
 
 void ACWSWaveManager::BroadcastRemainingEnemyCount()

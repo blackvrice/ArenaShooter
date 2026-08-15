@@ -83,6 +83,7 @@ void ACWSHUD::DrawHUD()
 			1.0f,
 			false);
 	}
+	DrawRoundAnnouncement(WaveManager, Font, CenterX, CenterY);
 
 	if (Boss)
 	{
@@ -131,6 +132,72 @@ void ACWSHUD::DrawHUD()
 		DrawText(TEXT("ARENA CLEARED"), FLinearColor::Green, CenterX - 130.0f, CenterY - 70.0f, Font, 1.8f, false);
 		DrawText(TEXT("PRESS ENTER TO RESTART"), FLinearColor::White, CenterX - 120.0f, CenterY - 30.0f, Font, 1.0f, false);
 	}
+}
+
+void ACWSHUD::DrawRoundAnnouncement(
+	ACWSWaveManager* WaveManager,
+	UFont* Font,
+	const float CenterX,
+	const float CenterY)
+{
+	if (!WaveManager || !Font)
+	{
+		return;
+	}
+
+	FString Title;
+	FString Subtitle;
+	FLinearColor AccentColor(1.0f, 0.72f, 0.12f);
+	const int32 RoundNumber = WaveManager->GetCurrentRound();
+	const int32 RemainingSeconds = FMath::Max(FMath::CeilToInt(WaveManager->GetPhaseTimeRemaining()), 1);
+
+	switch (WaveManager->GetWavePhase())
+	{
+	case ECWSWavePhase::Preparing:
+		Title = RoundNumber >= 5 ? TEXT("FINAL ROUND") : FString::Printf(TEXT("ROUND %d"), RoundNumber);
+		Subtitle = RoundNumber >= 5
+			? FString::Printf(TEXT("BOSS IN %d"), RemainingSeconds)
+			: FString::Printf(TEXT("STARTS IN %d"), RemainingSeconds);
+		break;
+	case ECWSWavePhase::Active:
+		if (WaveManager->GetPhaseElapsedTime() > 1.75f)
+		{
+			return;
+		}
+		Title = RoundNumber >= 5 ? TEXT("BOSS ROUND") : FString::Printf(TEXT("ROUND %d START"), RoundNumber);
+		Subtitle = RoundNumber >= 5 ? TEXT("ELIMINATE THE BOSS") : TEXT("SURVIVE THE WAVE");
+		break;
+	case ECWSWavePhase::RoundCleared:
+		Title = FString::Printf(TEXT("ROUND %d CLEAR"), RoundNumber);
+		Subtitle = FString::Printf(TEXT("NEXT ROUND IN %d"), RemainingSeconds);
+		AccentColor = FLinearColor(0.15f, 0.9f, 0.35f);
+		break;
+	default:
+		return;
+	}
+
+	const float PanelWidth = FMath::Min(Canvas->ClipX * 0.52f, 620.0f);
+	const float PanelHeight = 112.0f;
+	const float PanelX = CenterX - PanelWidth * 0.5f;
+	const float PanelY = CenterY - 205.0f;
+	DrawRect(FLinearColor(0.015f, 0.02f, 0.035f, 0.86f), PanelX, PanelY, PanelWidth, PanelHeight);
+	DrawRect(AccentColor, PanelX, PanelY, PanelWidth, 4.0f);
+	DrawCenteredText(Title, AccentColor, CenterX, PanelY + 20.0f, Font, 1.65f);
+	DrawCenteredText(Subtitle, FLinearColor::White, CenterX, PanelY + 69.0f, GEngine->GetSmallFont(), 1.05f);
+}
+
+void ACWSHUD::DrawCenteredText(
+	const FString& Text,
+	const FLinearColor& Color,
+	const float CenterX,
+	const float Y,
+	UFont* Font,
+	const float Scale)
+{
+	float TextWidth = 0.0f;
+	float TextHeight = 0.0f;
+	GetTextSize(Text, TextWidth, TextHeight, Font, Scale);
+	DrawText(Text, Color, CenterX - TextWidth * 0.5f, Y, Font, Scale, false);
 }
 
 ACWSWaveManager* ACWSHUD::FindWaveManager()

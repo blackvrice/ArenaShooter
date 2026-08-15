@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
+#include "Wave/CWSWaveTypes.h"
 #include "CWSGameMode.generated.h"
 
 class ACWSEnemyBase;
@@ -52,11 +53,16 @@ private:
 	void RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharacter);
 	void RunSmokeSupplyStep(ACWSPlayerCharacter* PlayerCharacter);
 	void RunCombatSmokeStep();
+	void RunHudScreenshotStep();
+	void FinishHudScreenshotTest();
 	void SpawnRoundClearSupply(int32 RoundNumber);
 	void FinishSmokeTest(bool bSucceeded, const TCHAR* Reason);
 
 	UFUNCTION()
 	void HandleRoundCleared(int32 RoundNumber);
+
+	UFUNCTION()
+	void HandleWavePhaseChanged(ECWSWavePhase WavePhase, int32 RoundNumber);
 
 	UFUNCTION()
 	void HandleAllRoundsCompleted();
@@ -71,7 +77,11 @@ private:
 	TMap<TWeakObjectPtr<ACWSEnemyBase>, FVector> SmokeEnemyStartLocations;
 	FTimerHandle GameplayBindTimer;
 	FTimerHandle SmokeStepTimer;
+	FTimerHandle HudScreenshotTimer;
+	FTimerHandle HudScreenshotExitTimer;
 	float SmokeStartTime = 0.0f;
+	float HudScreenshotStartTime = 0.0f;
+	FString HudScreenshotPath;
 	int32 SmokeHighestRoundCleared = 0;
 	int32 SmokeAmmoBeforeReload = 0;
 	int32 SmokeReserveBeforeReload = 0;
@@ -93,6 +103,11 @@ private:
 	bool bSmokeSawTankEnemy = false;
 	bool bSmokeSawTankStats = false;
 	bool bSmokeLoggedEnemyArchetypes = false;
+	bool bSmokeSawPreparingPhase = false;
+	bool bSmokeSawActivePhase = false;
+	bool bSmokeSawRoundClearedPhase = false;
+	bool bSmokeSawCompletedPhase = false;
+	bool bSmokeLoggedRoundAnnouncementPhases = false;
 	bool bSmokeWeaponTargetSpawned = false;
 	bool bSmokeWeaponAimPrimed = false;
 	bool bSmokeSawWeaponDamage = false;
@@ -107,4 +122,6 @@ private:
 	bool bSmokeAppliedPlayerDamage = false;
 	bool bSmokeSawPlayerDeath = false;
 	bool bSmokeFinished = false;
+	bool bHudScreenshotTest = false;
+	bool bHudScreenshotRequested = false;
 };

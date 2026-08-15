@@ -7,15 +7,18 @@
 #include "Enemy/CWSFastEnemy.h"
 #include "Enemy/CWSTankEnemy.h"
 #include "EngineUtils.h"
+#include "HAL/FileManager.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/PlatformMisc.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/Paths.h"
 #include "Player/CWSPlayerCharacter.h"
 #include "Pickup/CWSSupplyPickup.h"
 #include "TimerManager.h"
 #include "UI/CWSHUD.h"
+#include "UnrealClient.h"
 #include "Wave/CWSWaveManager.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCWSGame, Log, All);
@@ -43,6 +46,20 @@ void ACWSGameMode::BeginPlay()
 		0.1f,
 		true,
 		0.1f);
+
+	bHudScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSHUDScreenshotTest"));
+	if (bHudScreenshotTest)
+	{
+		HudScreenshotStartTime = GetWorld()->GetTimeSeconds();
+		GetWorldTimerManager().SetTimer(
+			HudScreenshotTimer,
+			this,
+			&ACWSGameMode::RunHudScreenshotStep,
+			0.1f,
+			true,
+			0.1f);
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_HUD_SCREENSHOT_STARTED"));
+	}
 
 	bSmokeTestAllRounds = FParse::Param(FCommandLine::Get(), TEXT("CWSAllRoundsSmokeTest"));
 	bSmokeTestEnabled = bSmokeTestAllRounds || FParse::Param(FCommandLine::Get(), TEXT("CWSRoundOneSmokeTest"));
@@ -79,6 +96,7 @@ void ACWSGameMode::BindGameplayActors()
 		{
 			WaveManager = *It;
 			It->OnRoundCleared.AddUniqueDynamic(this, &ACWSGameMode::HandleRoundCleared);
+			It->OnWavePhaseChanged.AddUniqueDynamic(this, &ACWSGameMode::HandleWavePhaseChanged);
 			It->OnAllRoundsCompleted.AddUniqueDynamic(this, &ACWSGameMode::HandleAllRoundsCompleted);
 			break;
 		}
@@ -105,6 +123,65 @@ void ACWSGameMode::BindGameplayActors()
 	{
 		GetWorldTimerManager().ClearTimer(GameplayBindTimer);
 	}
+}
+
+void ACWSGameMode::RunHudScreenshotStep()
+{
+	if (!bHudScreenshotTest || bHudScreenshotRequested || !GetWorld())
+	{
+		return;
+	}
+
+	BindGameplayActors();
+	if (!WaveManager.IsValid() || WaveManager->GetWavePhase() != ECWSWavePhase::Preparing ||
+		WaveManager->GetCurrentRound() != 1)
+	{
+		if (GetWorld()->GetTimeSeconds() - HudScreenshotStartTime > 10.0f)
+		{
+			UE_LOG(LogCWSGame, Error, TEXT("CWS_HUD_SCREENSHOT_FAILURE: Round 1 preparing phase was not reached"));
+			FPlatformMisc::RequestExitWithStatus(true, 2, TEXT("CWS HUD screenshot test timed out"));
+		}
+		return;
+	}
+
+	bHudScreenshotRequested = true;
+	GetWorldTimerManager().ClearTimer(HudScreenshotTimer);
+	const FString ScreenshotDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots"));
+	IFileManager::Get().MakeDirectory(*ScreenshotDirectory, true);
+	HudScreenshotPath = FPaths::Combine(ScreenshotDirectory, TEXT("CWSRoundAnnouncement.png"));
+	IFileManager::Get().Delete(*HudScreenshotPath, false, true);
+	FScreenshotRequest::RequestScreenshot(HudScreenshotPath, true, false);
+	UE_LOG(
+		LogCWSGame,
+		Display,
+		TEXT("CWS_HUD_SCREENSHOT_REQUESTED: %s Phase=%s Remaining=%.2f"),
+		*HudScreenshotPath,
+		*UEnum::GetValueAsString(WaveManager->GetWavePhase()),
+		WaveManager->GetPhaseTimeRemaining());
+	GetWorldTimerManager().SetTimer(
+		HudScreenshotExitTimer,
+		this,
+		&ACWSGameMode::FinishHudScreenshotTest,
+		1.0f,
+		false);
+}
+
+void ACWSGameMode::FinishHudScreenshotTest()
+{
+	const int64 ScreenshotSize = IFileManager::Get().FileSize(*HudScreenshotPath);
+	const bool bSucceeded = ScreenshotSize > 0;
+	if (bSucceeded)
+	{
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_HUD_SCREENSHOT_SUCCESS: %s Size=%lld"), *HudScreenshotPath, ScreenshotSize);
+	}
+	else
+	{
+		UE_LOG(LogCWSGame, Error, TEXT("CWS_HUD_SCREENSHOT_FAILURE: %s Size=%lld"), *HudScreenshotPath, ScreenshotSize);
+	}
+	FPlatformMisc::RequestExitWithStatus(
+		true,
+		bSucceeded ? 0 : 3,
+		bSucceeded ? TEXT("CWS HUD screenshot captured") : TEXT("CWS HUD screenshot was not written"));
 }
 
 void ACWSGameMode::ConfigureAllRoundsSmokeTimings()
@@ -299,6 +376,10 @@ void ACWSGameMode::RunCombatSmokeStep()
 	}
 
 	BindGameplayActors();
+	if (WaveManager.IsValid())
+	{
+		HandleWavePhaseChanged(WaveManager->GetWavePhase(), WaveManager->GetCurrentRound());
+	}
 	ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
 	if (PlayerCharacter)
 	{
@@ -484,10 +565,11 @@ void ACWSGameMode::RunCombatSmokeStep()
 			bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage &&
 				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected &&
 				bSmokeSawFastEnemy && bSmokeSawFastStats && bSmokeSawTankEnemy && bSmokeSawTankStats &&
+				bSmokeSawPreparingPhase && bSmokeSawActivePhase && bSmokeSawRoundClearedPhase && bSmokeSawCompletedPhase &&
 				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
 				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
 				SmokeHighestRoundCleared == 5 && bGameCleared,
-			TEXT("Hitscan damage, timed reload, supplies, Fast/Tank archetypes, dedicated boss patterns, and all five rounds were verified"));
+			TEXT("Hitscan damage, timed reload, supplies, round announcement phases, Fast/Tank archetypes, dedicated boss patterns, and all five rounds were verified"));
 		return;
 	}
 
@@ -512,6 +594,43 @@ void ACWSGameMode::HandleRoundCleared(const int32 RoundNumber)
 	if (RoundNumber == 1)
 	{
 		bSmokeRoundOneCleared = true;
+	}
+}
+
+void ACWSGameMode::HandleWavePhaseChanged(const ECWSWavePhase WavePhase, const int32 RoundNumber)
+{
+	if (!bSmokeTestEnabled)
+	{
+		return;
+	}
+
+	switch (WavePhase)
+	{
+	case ECWSWavePhase::Preparing:
+		bSmokeSawPreparingPhase = true;
+		break;
+	case ECWSWavePhase::Active:
+		bSmokeSawActivePhase = true;
+		break;
+	case ECWSWavePhase::RoundCleared:
+		bSmokeSawRoundClearedPhase = true;
+		break;
+	case ECWSWavePhase::Completed:
+		bSmokeSawCompletedPhase = true;
+		break;
+	default:
+		break;
+	}
+
+	if (!bSmokeLoggedRoundAnnouncementPhases && bSmokeSawPreparingPhase && bSmokeSawActivePhase &&
+		bSmokeSawRoundClearedPhase)
+	{
+		bSmokeLoggedRoundAnnouncementPhases = true;
+		UE_LOG(
+			LogCWSGame,
+			Display,
+			TEXT("CWS_ROUND_ANNOUNCEMENT_PHASES_VERIFIED: Preparing, Active, and RoundCleared observed through round %d"),
+			RoundNumber);
 	}
 }
 

@@ -6,6 +6,7 @@
 
 class ACWSWaveManager;
 class ACWSBossEnemy;
+class UFont;
 
 UCLASS()
 class ARENASHOOTER_API ACWSHUD : public AHUD
@@ -18,6 +19,8 @@ public:
 private:
 	ACWSWaveManager* FindWaveManager();
 	ACWSBossEnemy* FindLivingBoss();
+	void DrawRoundAnnouncement(ACWSWaveManager* WaveManager, UFont* Font, float CenterX, float CenterY);
+	void DrawCenteredText(const FString& Text, const FLinearColor& Color, float CenterX, float Y, UFont* Font, float Scale);
 
 	TWeakObjectPtr<ACWSWaveManager> CachedWaveManager;
 	TWeakObjectPtr<ACWSBossEnemy> CachedBoss;

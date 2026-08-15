@@ -97,6 +97,8 @@ GameMode BeginPlay
 - CachedSpawnPoints
 - Rounds
 - bRoundInProgress
+- CurrentPhase
+- PhaseStartedTime
 
 ### 함수
 
@@ -104,6 +106,9 @@ GameMode BeginPlay
 - StartWaveSystem()
 - StopWaveSystem()
 - GetRemainingEnemyCount()
+- GetWavePhase()
+- GetPhaseTimeRemaining()
+- GetPhaseElapsedTime()
 - HandleSpawnedEnemyDeath(AActor* DeadActor)
 - HandleSpawnedEnemyDestroyed(AActor* DestroyedActor)
 
@@ -112,7 +117,9 @@ GameMode BeginPlay
 - `ACWSWaveManager`가 Round 1~5 기본 데이터를 소유한다.
 - 방향 그룹을 라운드 로빈 순서로 큐에 넣어 한 방향에 스폰이 몰리지 않게 한다.
 - 생성된 적의 `OnDeath` 이벤트로 즉시 남은 적을 갱신하고 `OnDestroyed`를 안전망으로 유지한다.
-- `OnRoundStarted`, `OnRemainingEnemyCountChanged`, `OnRoundCleared`, `OnAllRoundsCompleted` Blueprint delegate를 제공한다.
+- `ECWSWavePhase`가 `Idle`, `Preparing`, `Active`, `RoundCleared`, `Completed`, `Stopped` 상태를 표현한다.
+- `OnWavePhaseChanged`, `OnRoundStarted`, `OnRemainingEnemyCountChanged`, `OnRoundCleared`, `OnAllRoundsCompleted` Blueprint delegate를 제공한다.
+- HUD가 타이머를 직접 추측하지 않도록 현재 페이즈의 남은 시간과 경과 시간 getter를 제공한다.
 - `ECWSEnemyType`과 방향별 SpawnGroup을 이용해 `ACWSEnemyBase`, `ACWSFastEnemy`, `ACWSTankEnemy`, `ACWSBossEnemy`를 선택한다.
 - 저장된 기존 라운드 데이터에도 `bUseDefaultArchetypeComposition` 매핑을 적용해 맵 에셋 재저장 없이 기본 조합을 유지한다.
 - Boss 슬롯 생성 시 `OnBossSpawned`를 브로드캐스트해 HUD, VFX, 사운드가 연결될 수 있다.
@@ -141,8 +148,9 @@ GameMode BeginPlay
 
 - `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
 - `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점, Normal/Fast/Tank/Boss 클래스 연결, `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
-- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
-- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, Fast/Tank 클래스와 능력치, Round 1~4 보급 생성, 각 라운드 클리어와 최종 게임 클리어 검사
+- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, `Preparing → Active → RoundCleared` 페이즈, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
+- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, Fast/Tank 클래스와 능력치, Round 1~4 보급 생성, 각 라운드 클리어, 라운드 공지 페이즈와 최종 `Completed` 전환 검사
+- `run_hud_screenshot.ps1`: Round 1 `Preparing` 상태를 1280×720 오프스크린으로 렌더링해 중앙 카운트다운 HUD 스크린샷 생성 검사
 - 전체 라운드 검증은 전용 Boss 클래스, 체력 1200, 최종 페이즈 전환, Ground Slam과 Shockwave 피해/넉백 경로도 함께 검사한다.
 - Warm DDC 직렬화 오류가 감지되면 스모크 러너가 격리된 Cold DDC로 한 번 자동 재시도한다.
 - `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사

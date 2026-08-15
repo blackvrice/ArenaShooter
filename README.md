@@ -9,7 +9,10 @@ Unreal Engine 5.6 기반 3인칭 웨이브 슈터입니다. `Lvl_Combat`에서 8
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_round_one_smoke.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_round_one_smoke.ps1 -AllRounds
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_hud_screenshot.ps1
 ```
+
+`run_hud_screenshot.ps1`은 Round 1 준비 카운트다운을 오프스크린으로 렌더링하고 `Saved/Screenshots/CWSRoundAnnouncement.png`를 생성해 HUD가 실제 화면에 표시되는지 검사한다.
 
 Windows Shipping 패키지 생성과 배포본 전체 라운드 스모크:
 

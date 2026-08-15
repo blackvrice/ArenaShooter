@@ -8,6 +8,7 @@
 | Ammo Counter | 현재 탄창 / 최대 탄창, 예비 탄약 / 최대 예비 탄약, 재장전 상태 |
 | Round Text | 현재 라운드 |
 | Enemy Counter | 남은 적 수 |
+| Round Announcement | 준비 카운트다운, 라운드 시작, 라운드 클리어, 다음 라운드 대기 |
 | Direction Warning | 활성 스폰 방향 경고 |
 | Boss Health Bar | 5라운드 보스 체력 |
 | Score | 점수 |
@@ -31,7 +32,7 @@ Main Menu
 
 ## 3. 라운드 시작 UI
 
-라운드 시작 전에 3초 카운트다운을 보여준다.
+라운드 시작 전에 중앙 패널로 3초 카운트다운을 보여준다. 전투 시작 직후에는 `ROUND N START`, 일반 라운드 클리어 뒤에는 `ROUND N CLEAR`와 다음 라운드까지 남은 시간을 표시한다. 5라운드는 `FINAL ROUND`, `BOSS ROUND` 문구로 구분한다.
 
 예시:
 
@@ -72,6 +73,7 @@ OnRoundStarted
 OnEnemyCountChanged
 OnRoundCleared
 OnBossSpawned
+OnWavePhaseChanged
 OnPlayerDead
 OnGameCleared
 ```
@@ -81,10 +83,12 @@ Widget은 해당 이벤트를 받아 텍스트와 게이지를 갱신한다.
 ## 7. 현재 구현 상태
 
 - `ACWSHUD` Canvas HUD가 체력, 탄창/예비 탄약, 재장전 상태, 라운드, 남은 적 수를 표시한다.
+- `ACWSWaveManager`의 명시적 페이즈와 타이머를 사용해 준비 카운트다운, 전투 시작, 라운드 클리어 공지를 화면 중앙에 표시한다.
 - 재장전은 1.2초 동안 발사를 잠그며 HUD의 탄약 줄을 노란색 `RELOADING` 상태로 표시한다.
 - Round 1~4 클리어 시 플레이어 전방에 홀수 라운드 탄약 +30, 짝수 라운드 체력 +40 보급이 생성된다.
 - 플레이어 체력이 0이 되면 `ACWSGameMode`가 게임 오버 상태를 설정하고 진행 중인 웨이브 타이머를 중단한다.
 - Round 5까지 모두 클리어하면 게임 클리어 상태를 설정한다.
 - Round 5 Boss가 살아 있는 동안 화면 상단에 체력바, 현재 페이즈, 최근 패턴을 표시한다.
 - 게임 오버/클리어 상태에서는 `PRESS ENTER TO RESTART`를 표시하고 Enter 입력으로 현재 `Lvl_Combat`를 다시 연다.
+- `run_hud_screenshot.ps1`이 Round 1 준비 공지를 실제 렌더링하고 스크린샷 파일 생성을 검사한다.
 - UMG 위젯, 방향 경고, 점수, Boss 패턴 사전 경고는 후속 UI 작업이다.

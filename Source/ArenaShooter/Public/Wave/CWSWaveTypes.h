@@ -18,6 +18,17 @@ enum class ECWSSpawnDirection : uint8
 	Center UMETA(DisplayName = "Center")
 };
 
+UENUM(BlueprintType)
+enum class ECWSWavePhase : uint8
+{
+	Idle UMETA(DisplayName = "Idle"),
+	Preparing UMETA(DisplayName = "Preparing"),
+	Active UMETA(DisplayName = "Active"),
+	RoundCleared UMETA(DisplayName = "Round Cleared"),
+	Completed UMETA(DisplayName = "Completed"),
+	Stopped UMETA(DisplayName = "Stopped")
+};
+
 USTRUCT(BlueprintType)
 struct ARENASHOOTER_API FCWSRoundSpawnGroup
 {
