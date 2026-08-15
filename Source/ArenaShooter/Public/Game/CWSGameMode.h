@@ -55,6 +55,8 @@ private:
 	void RunCombatSmokeStep();
 	void RunHudScreenshotStep();
 	void FinishHudScreenshotTest();
+	void RunCombatFeedbackScreenshotStep();
+	void FinishCombatFeedbackScreenshotTest();
 	void SpawnRoundClearSupply(int32 RoundNumber);
 	void FinishSmokeTest(bool bSucceeded, const TCHAR* Reason);
 
@@ -73,16 +75,22 @@ private:
 	TWeakObjectPtr<ACWSWaveManager> WaveManager;
 	TWeakObjectPtr<UCWSHealthComponent> PlayerHealth;
 	TWeakObjectPtr<ACWSEnemyBase> SmokeWeaponTarget;
+	TWeakObjectPtr<ACWSEnemyBase> CombatFeedbackScreenshotTarget;
 	TWeakObjectPtr<ACWSSupplyPickup> LastRoundSupply;
 	TMap<TWeakObjectPtr<ACWSEnemyBase>, FVector> SmokeEnemyStartLocations;
 	FTimerHandle GameplayBindTimer;
 	FTimerHandle SmokeStepTimer;
 	FTimerHandle HudScreenshotTimer;
 	FTimerHandle HudScreenshotExitTimer;
+	FTimerHandle CombatFeedbackScreenshotTimer;
+	FTimerHandle CombatFeedbackScreenshotExitTimer;
 	float SmokeStartTime = 0.0f;
 	float HudScreenshotStartTime = 0.0f;
+	float CombatFeedbackScreenshotStartTime = 0.0f;
 	FString HudScreenshotPath;
+	FString CombatFeedbackScreenshotPath;
 	int32 SmokeHighestRoundCleared = 0;
+	int32 CombatFeedbackCaptureDelaySteps = 0;
 	int32 SmokeAmmoBeforeReload = 0;
 	int32 SmokeReserveBeforeReload = 0;
 	bool bGameOver = false;
@@ -112,6 +120,10 @@ private:
 	bool bSmokeWeaponAimPrimed = false;
 	bool bSmokeSawWeaponDamage = false;
 	bool bSmokeWeaponTargetKilled = false;
+	bool bSmokeSawHitReaction = false;
+	bool bSmokeSawImpactEffect = false;
+	bool bSmokeSawDeathAnimation = false;
+	bool bSmokeSawDeathEffect = false;
 	bool bSmokeReloadStarted = false;
 	bool bSmokeReloadCompleted = false;
 	bool bSmokeAmmoSupplyCollected = false;
@@ -124,4 +136,11 @@ private:
 	bool bSmokeFinished = false;
 	bool bHudScreenshotTest = false;
 	bool bHudScreenshotRequested = false;
+	bool bCombatFeedbackScreenshotTest = false;
+	bool bCombatFeedbackArenaPrepared = false;
+	bool bCombatFeedbackAimPrimed = false;
+	bool bCombatFeedbackShotFired = false;
+	bool bCombatFeedbackCaptureShotFired = false;
+	bool bCombatFeedbackScreenshotRequested = false;
+	bool bCombatFeedbackVerified = false;
 };

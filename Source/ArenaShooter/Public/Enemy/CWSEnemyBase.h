@@ -6,6 +6,8 @@
 #include "CWSEnemyBase.generated.h"
 
 class UCWSHealthComponent;
+class UAnimSequenceBase;
+class UNiagaraSystem;
 
 UCLASS(Blueprintable)
 class ARENASHOOTER_API ACWSEnemyBase : public ACharacter
@@ -16,6 +18,7 @@ public:
 	ACWSEnemyBase();
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
 	virtual bool TryAttack(AActor* TargetActor);
@@ -38,7 +41,26 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	float GetMoveSpeed() const;
 
+	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
+	int32 GetHitReactionCount() const { return HitReactionCount; }
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
+	bool IsHitReactionActive() const { return bHitReactionActive; }
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
+	bool HasPlayedDeathAnimation() const { return bDeathAnimationPlayed; }
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
+	int32 GetDeathEffectSpawnCount() const { return DeathEffectSpawnCount; }
+
 protected:
+	UFUNCTION()
+	void HandleHealthChanged(
+		AActor* DamagedActor,
+		float CurrentHealth,
+		float MaxHealth,
+		AActor* ChangeInstigator);
+
 	UFUNCTION()
 	void HandleDeath(AActor* DeadActor);
 
@@ -57,6 +79,25 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (ClampMin = "0.05"))
 	float AttackInterval = 1.0f;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
+	TObjectPtr<UAnimSequenceBase> HitReactionAnimation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
+	TObjectPtr<UAnimSequenceBase> DeathAnimation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
+	TObjectPtr<UNiagaraSystem> DeathEffect;
+
 private:
+	void FinishHitReaction();
+	void PlayFeedbackAnimation(UAnimSequenceBase* Animation);
+	bool SpawnDeathEffect();
+
 	float NextAllowedAttackTime = 0.0f;
+	float LastObservedHealth = 0.0f;
+	int32 HitReactionCount = 0;
+	int32 DeathEffectSpawnCount = 0;
+	bool bHitReactionActive = false;
+	bool bDeathAnimationPlayed = false;
+	FTimerHandle HitReactionTimerHandle;
 };

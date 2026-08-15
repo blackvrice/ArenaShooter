@@ -4,11 +4,18 @@
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraSystem.h"
 #include "TimerManager.h"
+#include "UObject/ConstructorHelpers.h"
 
 UCWSHitscanWeaponComponent::UCWSHitscanWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+
+	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> ImpactEffectAsset(
+		TEXT("/Game/Variant_Combat/VFX/NS_Damage.NS_Damage"));
+	ImpactEffect = ImpactEffectAsset.Object;
 }
 
 void UCWSHitscanWeaponComponent::BeginPlay()
@@ -68,6 +75,15 @@ bool UCWSHitscanWeaponComponent::TryFire()
 
 	if (bHit && IsValid(Hit.GetActor()))
 	{
+		if (ImpactEffect)
+		{
+			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+				World,
+				ImpactEffect,
+				Hit.ImpactPoint,
+				Hit.ImpactNormal.Rotation());
+			++ImpactEffectSpawnCount;
+		}
 		UGameplayStatics::ApplyPointDamage(
 			Hit.GetActor(),
 			Damage,
