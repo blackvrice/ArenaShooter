@@ -34,7 +34,7 @@ Blueprint
 | `ACWSEnemyAIController` | `AAIController` | 플레이어 추적 및 공격 거리 제어 | 구현 |
 | `ACWSSpawnPoint` | `AActor` | 방향별 스폰 위치 | 구현 |
 | `ACWSWaveManager` | `AActor` | 라운드 진행, 적 스폰, 사망/클리어 판정 | 구현 |
-| `ACWSGameMode` | `AGameModeBase` | 네이티브 Pawn/HUD 지정, 런타임 스모크 테스트 | 구현 |
+| `ACWSGameMode` | `AGameModeBase` | Pawn/HUD 지정, 게임 오버·클리어·레벨 재시작, 런타임 스모크 테스트 | 구현 |
 | `ACWSHUD` | `AHUD` | 조준점, 체력, 탄약, 라운드, 남은 적 표시 | 구현 |
 | Boss/Pickup 전용 클래스 | - | 보스 패턴, 회복/탄약 보급 | 후속 작업 |
 
@@ -132,11 +132,15 @@ GameMode BeginPlay
 
 `ACWSEnemyBase`는 체력 60, 이동속도 350, 근접 공격 거리/데미지/간격을 제공한다. `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `ApplyDamage`를 호출한다. 사망하면 이동과 충돌을 끄고 웨이브 매니저에 `OnDeath`를 전달한다.
 
-## 9. 플레이 가능한 Round 1 검증
+## 9. 전투 흐름 런타임 검증
 
 - `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
 - `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점과 `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
-- `run_round_one_smoke.ps1`: 실제 게임 월드에서 플레이어 생성, 적 이동, 사망, Round 1 클리어 검사
+- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 적 NavMesh 이동, Round 1 클리어, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
+- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰과 각 라운드 클리어, 최종 게임 클리어 검사
+- `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사
+
+적 Capsule은 `ECC_Visibility`를 차단하므로 플레이어 무기의 Visibility 채널 라인트레이스가 실제 적에게 도달한다. 플레이어 사망 시 `ACWSGameMode`가 `ACWSWaveManager::StopWaveSystem()`을 호출하고 HUD에 게임 오버와 Enter 재시작 안내를 표시한다.
 
 ## 10. 확장 가능 구조
 

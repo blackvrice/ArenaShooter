@@ -6,6 +6,7 @@
 #include "Components/CWSHitscanWeaponComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Game/CWSGameMode.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -78,6 +79,8 @@ ACWSPlayerCharacter::ACWSPlayerCharacter()
 	static ConstructorHelpers::FObjectFinder<UInputAction> ReloadActionAsset(
 		TEXT("/Game/Variant_Combat/Input/Actions/IA_ChargedAttack.IA_ChargedAttack"));
 	ReloadAction = ReloadActionAsset.Object;
+	RestartAction = CreateDefaultSubobject<UInputAction>(TEXT("RestartAction"));
+	RestartAction->ValueType = EInputActionValueType::Boolean;
 }
 
 void ACWSPlayerCharacter::BeginPlay()
@@ -93,6 +96,7 @@ void ACWSPlayerCharacter::BeginPlay()
 	{
 		CombatMappingContext->MapKey(ReloadAction, EKeys::RightMouseButton);
 	}
+	CombatMappingContext->MapKey(RestartAction, EKeys::Enter);
 
 	if (const APlayerController* PlayerController = Cast<APlayerController>(Controller))
 	{
@@ -146,6 +150,7 @@ void ACWSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 	{
 		EnhancedInput->BindAction(ReloadAction, ETriggerEvent::Started, this, &ACWSPlayerCharacter::Reload);
 	}
+	EnhancedInput->BindAction(RestartAction, ETriggerEvent::Started, this, &ACWSPlayerCharacter::RestartLevel);
 }
 
 void ACWSPlayerCharacter::Move(const FInputActionValue& Value)
@@ -195,11 +200,15 @@ void ACWSPlayerCharacter::Reload(const FInputActionValue& Value)
 	}
 }
 
+void ACWSPlayerCharacter::RestartLevel(const FInputActionValue& Value)
+{
+	if (ACWSGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACWSGameMode>() : nullptr)
+	{
+		GameMode->RestartCurrentLevel();
+	}
+}
+
 void ACWSPlayerCharacter::HandleDeath(AActor* DeadActor)
 {
 	GetCharacterMovement()->DisableMovement();
-	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
-	{
-		DisableInput(PlayerController);
-	}
 }

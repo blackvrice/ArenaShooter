@@ -36,6 +36,7 @@ private:
 	void StopJump(const FInputActionValue& Value);
 	void Fire(const FInputActionValue& Value);
 	void Reload(const FInputActionValue& Value);
+	void RestartLevel(const FInputActionValue& Value);
 
 	UFUNCTION()
 	void HandleDeath(AActor* DeadActor);
@@ -75,4 +76,7 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UInputAction> ReloadAction;
+
+	UPROPERTY()
+	TObjectPtr<UInputAction> RestartAction;
 };

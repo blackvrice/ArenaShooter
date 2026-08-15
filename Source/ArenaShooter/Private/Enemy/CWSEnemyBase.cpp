@@ -15,6 +15,7 @@ ACWSEnemyBase::ACWSEnemyBase()
 	HealthComponent->SetMaxHealth(60.0f);
 
 	GetCapsuleComponent()->InitCapsuleSize(42.0f, 96.0f);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	GetCharacterMovement()->MaxWalkSpeed = 350.0f;
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f);

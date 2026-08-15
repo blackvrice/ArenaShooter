@@ -119,7 +119,7 @@ Round_05,5,true,5.0,0.0,"중앙 보스 출현"
 
 ## 6. 라운드별 SpawnGroup 권장값
 
-현재 C++ 초기 구현은 아래 방향과 Count를 기본값으로 사용한다. `Default` 그룹은 `DefaultEnemyClass`, `Boss slot` 그룹은 `BossEnemyClass`를 사용한다. 아직 두 슬롯 모두 `BP_CombatEnemy`로 지정되어 있다.
+현재 C++ 초기 구현은 아래 방향과 Count를 기본값으로 사용한다. `Default` 그룹은 `DefaultEnemyClass`, `Boss slot` 그룹은 `BossEnemyClass`를 사용한다. 현재 두 슬롯 모두 네이티브 `ACWSEnemyBase`이며, 전용 Boss 클래스를 구현하면 Round 5의 Center 슬롯부터 교체한다.
 
 ### Round 1
 

@@ -5,6 +5,7 @@
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
+#include "Game/CWSGameMode.h"
 #include "GameFramework/PlayerController.h"
 #include "Wave/CWSWaveManager.h"
 
@@ -84,13 +85,16 @@ void ACWSHUD::DrawHUD()
 		1.0f,
 		false);
 
-	if (Health && !Health->IsAlive())
+	const ACWSGameMode* GameMode = GetWorld()->GetAuthGameMode<ACWSGameMode>();
+	if ((GameMode && GameMode->IsGameOver()) || (Health && !Health->IsAlive()))
 	{
 		DrawText(TEXT("GAME OVER"), FLinearColor::Red, CenterX - 95.0f, CenterY - 70.0f, Font, 1.8f, false);
+		DrawText(TEXT("PRESS ENTER TO RESTART"), FLinearColor::White, CenterX - 120.0f, CenterY - 30.0f, Font, 1.0f, false);
 	}
-	else if (WaveManager && WaveManager->bAllRoundsCompleted)
+	else if ((GameMode && GameMode->IsGameCleared()) || (WaveManager && WaveManager->bAllRoundsCompleted))
 	{
 		DrawText(TEXT("ARENA CLEARED"), FLinearColor::Green, CenterX - 130.0f, CenterY - 70.0f, Font, 1.8f, false);
+		DrawText(TEXT("PRESS ENTER TO RESTART"), FLinearColor::White, CenterX - 120.0f, CenterY - 30.0f, Font, 1.0f, false);
 	}
 }
 

@@ -4,6 +4,8 @@ Intermediate
 Saved
 .vscode
 .vs
+__pycache__/
+*.py[cod]
 *.VC.db
 *.opensdf
 *.opendb

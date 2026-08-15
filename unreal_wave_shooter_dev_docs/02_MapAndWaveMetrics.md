@@ -180,7 +180,7 @@ X- ------------------------------------------------------------- X+
 
 `ACWSWaveManager`가 게임 시작 후 자동으로 Round 1을 준비한다. 각 라운드는 준비 시간 후 방향별 `ACWSSpawnPoint`에서 `ACWSEnemyBase`를 순차 생성한다. 체력 컴포넌트의 `OnDeath`를 우선 사용하고 `OnDestroyed`를 안전망으로 사용해 남은 적 수와 라운드 클리어를 갱신한다. 모든 적이 제거되면 5초 후 다음 라운드를 시작한다.
 
-`DefaultEngine.ini`의 Recast NavMesh는 `Dynamic` 런타임 생성으로 설정했다. 2026-07-19 헤드리스 게임 스모크 테스트에서 Round 1의 적 8마리 생성, NavMesh 이동, 사망 처리, 남은 적 0, 라운드 클리어까지 확인했다.
+`DefaultEngine.ini`의 Recast NavMesh는 `Dynamic` 런타임 생성으로 설정했다. 2026-08-15 헤드리스 게임 스모크 테스트에서 실제 히트스캔 피격/사망, Round 1 적 8마리의 NavMesh 이동과 클리어, 플레이어 사망 뒤 웨이브 정지와 레벨 재시작을 확인했다. 가속 전체 라운드 테스트에서는 `8 / 16 / 24 / 34 / 15` 스폰과 Round 1~5 클리어를 확인했다.
 
 | 방향 | 위치 `(X, Y, Z)` |
 |---|---:|
@@ -232,7 +232,7 @@ X- ------------------------------------------------------------- X+
 - 중앙 방은 `Tools/Editor/run_build_central_room.ps1`로 재생성하거나 검사한다.
 - 웨이브 매니저와 9개 스폰 지점은 `Tools/Editor/run_build_wave_spawning.ps1`로 재생성하거나 검사한다.
 - PlayerStart, NavMesh Bounds, 네이티브 런타임 클래스 연결은 `Tools/Editor/run_build_playable_round_one.ps1`로 재생성하거나 검사한다.
-- Round 1 실제 게임 검증은 `Tools/Editor/run_round_one_smoke.ps1`로 실행한다.
+- Round 1 전투 흐름 검증은 `Tools/Editor/run_round_one_smoke.ps1`, 전체 라운드 검증은 같은 스크립트의 `-AllRounds` 옵션으로 실행한다.
 - 자동화 스크립트를 다시 사용할 경우 10,000 x 10,000 지형, 모서리 플랫폼, 경사로, 체크포인트 설계를 먼저 반영한다.
 - 액터 이름은 `Cube`, `Cube2` 같은 기본 이름 대신 역할 중심 이름으로 정리한다.
 - 웨이브 스폰 좌표는 100 m 전장의 실제 플레이 테스트 후 확정한다.

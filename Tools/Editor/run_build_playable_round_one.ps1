@@ -33,6 +33,7 @@ try {
         -nop4 `
         -nosplash `
         -nullrhi `
+        -DDC=Warm `
         -EnablePlugins=PythonScriptPlugin `
         -stdout `
         -FullStdOutLogOutput
