@@ -5,6 +5,7 @@
 #include "CWSGameMode.generated.h"
 
 class ACWSEnemyBase;
+class ACWSBossEnemy;
 class ACWSWaveManager;
 class ACWSPlayerCharacter;
 class UCWSHealthComponent;
@@ -72,6 +73,11 @@ private:
 	bool bSmokeTimingsConfigured = false;
 	bool bSmokeSawPlayer = false;
 	bool bSmokeSawEnemyMovement = false;
+	bool bSmokeSawDedicatedBoss = false;
+	bool bSmokeSawBossMaxHealth = false;
+	bool bSmokeSawBossFinalPhase = false;
+	bool bSmokeSawBossGroundSlamDamage = false;
+	bool bSmokeSawBossShockwaveDamage = false;
 	bool bSmokeWeaponTargetSpawned = false;
 	bool bSmokeWeaponAimPrimed = false;
 	bool bSmokeSawWeaponDamage = false;

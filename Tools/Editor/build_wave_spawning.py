@@ -26,9 +26,10 @@ def native_classes():
     wave_manager_class = getattr(unreal, "CWSWaveManager", None)
     spawn_point_class = getattr(unreal, "CWSSpawnPoint", None)
     enemy_class = getattr(unreal, "CWSEnemyBase", None)
-    if not wave_manager_class or not spawn_point_class or not enemy_class:
+    boss_class = getattr(unreal, "CWSBossEnemy", None)
+    if not wave_manager_class or not spawn_point_class or not enemy_class or not boss_class:
         raise RuntimeError("ArenaShooter C++ wave classes are unavailable. Build ArenaShooterEditor first.")
-    return wave_manager_class, spawn_point_class, enemy_class
+    return wave_manager_class, spawn_point_class, enemy_class, boss_class
 
 
 def generated_actors(actor_subsystem):
@@ -99,7 +100,7 @@ def read_round_totals(manager):
 
 
 def validate(actor_subsystem):
-    wave_manager_class, spawn_point_class, enemy_class = native_classes()
+    wave_manager_class, spawn_point_class, enemy_class, boss_class = native_classes()
     managers = [actor for actor in actor_subsystem.get_all_level_actors() if isinstance(actor, wave_manager_class)]
     spawn_points = [actor for actor in actor_subsystem.get_all_level_actors() if isinstance(actor, spawn_point_class)]
     if len(managers) != 1:
@@ -130,19 +131,22 @@ def validate(actor_subsystem):
         raise RuntimeError("CWSWaveManager has no default enemy class")
     if manager.get_editor_property("default_enemy_class").get_path_name() != "/Script/ArenaShooter.CWSEnemyBase":
         raise RuntimeError("CWSWaveManager does not use CWSEnemyBase")
+    if manager.get_editor_property("boss_enemy_class").get_path_name() != "/Script/ArenaShooter.CWSBossEnemy":
+        raise RuntimeError("CWSWaveManager does not use CWSBossEnemy for the boss slot")
 
     summary = {
         "manager": manager.get_actor_label(),
         "spawn_points": rows,
         "round_totals": round_totals,
         "default_enemy_class": str(manager.get_editor_property("default_enemy_class")),
+        "boss_enemy_class": str(manager.get_editor_property("boss_enemy_class")),
     }
     unreal.log("WAVE_SPAWN_SYSTEM_INSPECT=" + json.dumps(summary, separators=(",", ":")))
     return summary
 
 
 def build(actor_subsystem):
-    wave_manager_class, spawn_point_class, enemy_class = native_classes()
+    wave_manager_class, spawn_point_class, enemy_class, boss_class = native_classes()
     old_actors = generated_actors(actor_subsystem)
     old_package_files = [actor_package_filename(actor) for actor in old_actors]
     old_package_files.extend(generated_external_object_files())
@@ -156,7 +160,7 @@ def build(actor_subsystem):
     )
     set_common_actor_properties(manager, "CWS_WaveManager", "Gameplay/Wave", ["CWS_WaveManager"])
     manager.set_editor_property("default_enemy_class", enemy_class)
-    manager.set_editor_property("boss_enemy_class", enemy_class)
+    manager.set_editor_property("boss_enemy_class", boss_class)
     manager.set_editor_property("initial_start_delay", 2.0)
 
     for direction, (location, direction_tag) in SPAWN_POINTS.items():

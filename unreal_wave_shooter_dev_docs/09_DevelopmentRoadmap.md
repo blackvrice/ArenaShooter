@@ -26,7 +26,7 @@
 
 ### Week 4
 
-- Boss Round 구현
+- [x] Boss Round 구현
 - [x] 기본 Canvas HUD 구현
 - 보급/회복 아이템 구현
 - [x] 게임 오버/클리어 상태 표시
@@ -99,7 +99,9 @@
 - [x] 플레이어 사망, 웨이브 정지, 현재 레벨 재시작 검증
 - [x] Round 1~5 전체 스폰/클리어와 최종 게임 클리어 자동 검증
 - [x] `IMC_Combat`의 누락된 `IA_Dash` 손상 참조 제거 및 14개 매핑 재검사
-- [ ] 전용 Boss 클래스와 패턴
+- [x] 전용 Boss 클래스, 3단계 페이즈, Ground Slam/Shockwave 패턴
+- [x] Boss 체력/페이즈 HUD와 `OnBossSpawned` 이벤트
+- [x] Boss 생성·페이즈·패턴 피해·Round 5 클리어 런타임 자동 검증
 - [ ] 보급/회복 아이템
 - [ ] Round 1~5 수동 플레이 밸런싱
 - [ ] 패키징 빌드와 패키지 실행 테스트

@@ -1,6 +1,7 @@
 #include "Wave/CWSWaveManager.h"
 
 #include "Components/CWSHealthComponent.h"
+#include "Enemy/CWSBossEnemy.h"
 #include "Enemy/CWSEnemyBase.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -31,7 +32,7 @@ ACWSWaveManager::ACWSWaveManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	DefaultEnemyClass = ACWSEnemyBase::StaticClass();
-	BossEnemyClass = DefaultEnemyClass;
+	BossEnemyClass = ACWSBossEnemy::StaticClass();
 
 	BuildDefaultRounds();
 }
@@ -302,6 +303,18 @@ void ACWSWaveManager::SpawnNextEnemy()
 				Health->OnDeath.AddDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDeath);
 			}
 			AliveEnemies.Add(SpawnedEnemy);
+			if (PendingSpawn.bUseBossClass)
+			{
+				if (ACWSBossEnemy* Boss = Cast<ACWSBossEnemy>(SpawnedEnemy))
+				{
+					OnBossSpawned.Broadcast(Boss);
+					UE_LOG(LogCWSWave, Display, TEXT("Round %d spawned the dedicated boss."), CurrentRound);
+				}
+				else
+				{
+					UE_LOG(LogCWSWave, Error, TEXT("Boss slot spawned a non-boss class: %s."), *GetNameSafe(EnemyClass));
+				}
+			}
 			UE_LOG(
 				LogCWSWave,
 				Log,

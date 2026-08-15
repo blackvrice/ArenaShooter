@@ -17,7 +17,7 @@ public:
 	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
-	bool TryAttack(AActor* TargetActor);
+	virtual bool TryAttack(AActor* TargetActor);
 
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	float GetAttackRange() const { return AttackRange; }

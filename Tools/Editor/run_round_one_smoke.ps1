@@ -23,28 +23,39 @@ if ($openEditor) {
     throw "ArenaShooter is open in Unreal Editor. Close the editor before running the Round 1 smoke test."
 }
 
-if (Test-Path -LiteralPath $logFile) {
-    Remove-Item -LiteralPath $logFile
+function Invoke-SmokeTest([string]$DdcGraph) {
+    if (Test-Path -LiteralPath $logFile) {
+        Remove-Item -LiteralPath $logFile
+    }
+
+    & $editorCmd $projectFile `
+        "/Game/Variant_Combat/Lvl_Combat" `
+        -game `
+        -nullrhi `
+        -unattended `
+        -nosound `
+        -nop4 `
+        "-DDC=$DdcGraph" `
+        $smokeFlag `
+        "-abslog=$logFile" `
+        -stdout `
+        -FullStdOutLogOutput
+
+    $script:editorExitCode = $LASTEXITCODE
+    $script:logText = if (Test-Path -LiteralPath $logFile) {
+        Get-Content -LiteralPath $logFile -Raw
+    } else {
+        ""
+    }
 }
 
-& $editorCmd $projectFile `
-    "/Game/Variant_Combat/Lvl_Combat" `
-    -game `
-    -nullrhi `
-    -unattended `
-    -nosound `
-    -nop4 `
-    -DDC=Warm `
-    $smokeFlag `
-    "-abslog=$logFile" `
-    -stdout `
-    -FullStdOutLogOutput
-
-$editorExitCode = $LASTEXITCODE
-$logText = if (Test-Path -LiteralPath $logFile) {
-    Get-Content -LiteralPath $logFile -Raw
-} else {
-    ""
+Invoke-SmokeTest "Warm"
+$hasResultMarker = $logText.Contains($successMarker) -or $logText.Contains($failureMarker)
+$hasDdcSerializationFailure =
+    $logText -match "FLargeMemoryReader|BufferReader.h|Copied 0 bytes when .* bytes were expected"
+if (-not $hasResultMarker -and $hasDdcSerializationFailure) {
+    Write-Warning "Warm DDC failed during asset deserialization. Retrying once with an isolated Cold DDC."
+    Invoke-SmokeTest "Cold"
 }
 
 if ($logText.Contains($successMarker)) {

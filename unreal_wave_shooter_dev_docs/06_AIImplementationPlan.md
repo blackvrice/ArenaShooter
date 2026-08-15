@@ -55,8 +55,9 @@ C++ 또는 Blueprint에서 `AI Move To` 기반으로 구현한다.
 ### Boss
 
 - 5라운드 중앙 출현
-- 패턴 공격
-- 주기적으로 잡몹 소환 가능
+- 체력 66%/33%에서 2·최종 페이즈 전환
+- Ground Slam과 넉백 Shockwave 패턴
+- 페이즈가 진행될수록 이동속도와 공격 주기 강화
 
 ## 5. 보스 패턴 후보
 
@@ -77,6 +78,13 @@ Round 5 시작
 → 일정 체력마다 보조 적 스폰
 → 보스 처치 시 게임 클리어
 ```
+
+### 현재 구현
+
+- `ACWSBossEnemy` 체력 1200, 이동속도 `260 → 320 → 380`
+- Phase 1은 Ground Slam, Phase 2는 Ground Slam/Shockwave 교대, Final Phase는 빠른 Shockwave 사용
+- `OnBossPhaseChanged`, `OnBossPatternExecuted`, WaveManager의 `OnBossSpawned` 이벤트 제공
+- 잡몹 소환, 전용 애니메이션/VFX/SFX는 후속 확장 항목
 
 ## 7. Behavior Tree 확장 방향
 

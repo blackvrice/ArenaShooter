@@ -11,6 +11,7 @@ class APawn;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSRoundEvent, int32, RoundNumber);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCWSRemainingEnemyEvent, int32, RemainingEnemies, int32, RoundNumber);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCWSWaveSystemCompletedEvent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSBossSpawnedEvent, AActor*, BossActor);
 
 UCLASS(BlueprintType)
 class ARENASHOOTER_API ACWSWaveManager : public AActor
@@ -52,6 +53,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Wave|Events")
 	FCWSWaveSystemCompletedEvent OnAllRoundsCompleted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Wave|Events")
+	FCWSBossSpawnedEvent OnBossSpawned;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	bool bAutoStart = true;

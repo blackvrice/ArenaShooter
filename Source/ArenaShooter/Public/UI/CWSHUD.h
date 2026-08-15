@@ -5,6 +5,7 @@
 #include "CWSHUD.generated.h"
 
 class ACWSWaveManager;
+class ACWSBossEnemy;
 
 UCLASS()
 class ARENASHOOTER_API ACWSHUD : public AHUD
@@ -16,6 +17,8 @@ public:
 
 private:
 	ACWSWaveManager* FindWaveManager();
+	ACWSBossEnemy* FindLivingBoss();
 
 	TWeakObjectPtr<ACWSWaveManager> CachedWaveManager;
+	TWeakObjectPtr<ACWSBossEnemy> CachedBoss;
 };

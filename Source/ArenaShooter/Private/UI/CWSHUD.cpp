@@ -5,6 +5,7 @@
 #include "Engine/Canvas.h"
 #include "Engine/Engine.h"
 #include "EngineUtils.h"
+#include "Enemy/CWSBossEnemy.h"
 #include "Game/CWSGameMode.h"
 #include "GameFramework/PlayerController.h"
 #include "Wave/CWSWaveManager.h"
@@ -28,6 +29,7 @@ void ACWSHUD::DrawHUD()
 	const UCWSHitscanWeaponComponent* Weapon =
 		PlayerPawn ? PlayerPawn->FindComponentByClass<UCWSHitscanWeaponComponent>() : nullptr;
 	ACWSWaveManager* WaveManager = FindWaveManager();
+	ACWSBossEnemy* Boss = FindLivingBoss();
 
 	float TextY = 35.0f;
 	UFont* Font = GEngine->GetMediumFont();
@@ -76,6 +78,33 @@ void ACWSHUD::DrawHUD()
 			false);
 	}
 
+	if (Boss)
+	{
+		const UCWSHealthComponent* BossHealth = Boss->GetHealthComponent();
+		if (BossHealth && BossHealth->IsAlive())
+		{
+			const float BarWidth = FMath::Min(Canvas->ClipX * 0.45f, 560.0f);
+			const float BarHeight = 18.0f;
+			const float BarX = CenterX - BarWidth * 0.5f;
+			const float BarY = 38.0f;
+			DrawRect(FLinearColor(0.05f, 0.05f, 0.05f, 0.9f), BarX - 2.0f, BarY - 2.0f, BarWidth + 4.0f, BarHeight + 4.0f);
+			DrawRect(FLinearColor(0.75f, 0.04f, 0.04f), BarX, BarY, BarWidth * BossHealth->GetHealthPercent(), BarHeight);
+			DrawText(
+				FString::Printf(
+					TEXT("BOSS  %.0f / %.0f  |  %s  |  %s"),
+					BossHealth->GetCurrentHealth(),
+					BossHealth->GetMaxHealth(),
+					*Boss->GetBossPhaseLabel(),
+					*Boss->GetLastPatternLabel()),
+				FLinearColor::White,
+				BarX,
+				BarY + 23.0f,
+				GEngine->GetSmallFont(),
+				1.0f,
+				false);
+		}
+	}
+
 	DrawText(
 		TEXT("LMB: FIRE   RMB: RELOAD   WASD: MOVE"),
 		FLinearColor(0.7f, 0.7f, 0.7f),
@@ -109,6 +138,25 @@ ACWSWaveManager* ACWSHUD::FindWaveManager()
 	{
 		CachedWaveManager = *It;
 		return *It;
+	}
+	return nullptr;
+}
+
+ACWSBossEnemy* ACWSHUD::FindLivingBoss()
+{
+	if (CachedBoss.IsValid() && CachedBoss->GetHealthComponent()->IsAlive())
+	{
+		return CachedBoss.Get();
+	}
+
+	CachedBoss.Reset();
+	for (TActorIterator<ACWSBossEnemy> It(GetWorld()); It; ++It)
+	{
+		if (It->GetHealthComponent()->IsAlive())
+		{
+			CachedBoss = *It;
+			return *It;
+		}
 	}
 	return nullptr;
 }

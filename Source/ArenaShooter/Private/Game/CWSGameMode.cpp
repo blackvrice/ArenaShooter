@@ -2,6 +2,7 @@
 
 #include "Components/CWSHealthComponent.h"
 #include "Components/CWSHitscanWeaponComponent.h"
+#include "Enemy/CWSBossEnemy.h"
 #include "Enemy/CWSEnemyBase.h"
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -246,6 +247,64 @@ void ACWSGameMode::RunCombatSmokeStep()
 			continue;
 		}
 
+		if (bSmokeTestAllRounds)
+		{
+			if (ACWSBossEnemy* Boss = Cast<ACWSBossEnemy>(Enemy))
+			{
+				bSmokeSawDedicatedBoss = true;
+				bSmokeSawBossMaxHealth = FMath::IsNearlyEqual(Health->GetMaxHealth(), 1200.0f);
+				if ((!bSmokeSawBossGroundSlamDamage || !bSmokeSawBossShockwaveDamage) &&
+					PlayerCharacter && PlayerHealth.IsValid())
+				{
+					PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+					const FVector OriginalPlayerLocation = PlayerCharacter->GetActorLocation();
+					PlayerCharacter->TeleportTo(
+						Boss->GetActorLocation() + FVector(200.0f, 0.0f, 0.0f),
+						PlayerCharacter->GetActorRotation());
+
+					const float PlayerHealthBeforeGroundSlam = PlayerHealth->GetCurrentHealth();
+					const bool bGroundSlamExecuted = Boss->TryAttack(PlayerCharacter);
+					bSmokeSawBossGroundSlamDamage =
+						bGroundSlamExecuted &&
+						Boss->GetLastPattern() == ECWSBossPattern::GroundSlam &&
+						PlayerHealth->GetCurrentHealth() < PlayerHealthBeforeGroundSlam;
+
+					PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+					const float BossDamageToFinalPhase =
+						FMath::Max(Health->GetCurrentHealth() - Health->GetMaxHealth() * 0.25f, 0.0f);
+					Health->ApplyHealthChange(-BossDamageToFinalPhase, this);
+					bSmokeSawBossFinalPhase = Boss->GetBossPhase() == ECWSBossPhase::FinalPhase;
+
+					const float PlayerHealthBeforeShockwave = PlayerHealth->GetCurrentHealth();
+					const bool bShockwaveExecuted = Boss->TryAttack(PlayerCharacter);
+					bSmokeSawBossShockwaveDamage =
+						bShockwaveExecuted &&
+						Boss->GetLastPattern() == ECWSBossPattern::Shockwave &&
+						Boss->GetPatternExecutionCount() >= 2 &&
+						PlayerHealth->GetCurrentHealth() < PlayerHealthBeforeShockwave;
+					PlayerCharacter->TeleportTo(OriginalPlayerLocation, PlayerCharacter->GetActorRotation());
+					PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
+					PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+
+					if (bSmokeSawBossMaxHealth && bSmokeSawBossFinalPhase &&
+						bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage)
+					{
+						UE_LOG(
+							LogCWSGame,
+							Display,
+							TEXT("CWS_BOSS_SMOKE_VERIFIED: class, 1200 health, final phase, ground slam, shockwave damage, and knockback path"));
+					}
+				}
+
+				if (bSmokeSawBossMaxHealth && bSmokeSawBossFinalPhase &&
+					bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage)
+				{
+					Health->Kill(this);
+					continue;
+				}
+			}
+		}
+
 		FVector* StartLocation = SmokeEnemyStartLocations.Find(Enemy);
 		if (!StartLocation)
 		{
@@ -301,8 +360,10 @@ void ACWSGameMode::RunCombatSmokeStep()
 	{
 		FinishSmokeTest(
 			bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage &&
-				bSmokeWeaponTargetKilled && SmokeHighestRoundCleared == 5 && bGameCleared,
-			TEXT("Hitscan damage and all five rounds were verified"));
+				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
+				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
+				SmokeHighestRoundCleared == 5 && bGameCleared,
+			TEXT("Hitscan damage, dedicated boss phases and pattern damage, and all five rounds were verified"));
 		return;
 	}
 
