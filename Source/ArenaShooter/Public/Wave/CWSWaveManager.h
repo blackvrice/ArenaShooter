@@ -67,7 +67,16 @@ public:
 	TSoftClassPtr<APawn> DefaultEnemyClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	TSoftClassPtr<APawn> FastEnemyClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	TSoftClassPtr<APawn> TankEnemyClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	TSoftClassPtr<APawn> BossEnemyClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	bool bUseDefaultArchetypeComposition = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	TArray<FCWSRoundDefinition> Rounds;
@@ -85,6 +94,7 @@ private:
 	struct FPendingSpawn
 	{
 		ECWSSpawnDirection Direction = ECWSSpawnDirection::North;
+		ECWSEnemyType EnemyType = ECWSEnemyType::Normal;
 		float Interval = 1.0f;
 		bool bUseBossClass = false;
 	};
@@ -93,6 +103,7 @@ private:
 	void CacheSpawnPoints();
 	void BeginCurrentRoundSpawning();
 	void BuildSpawnQueue(const FCWSRoundDefinition& RoundDefinition);
+	UClass* ResolveEnemyClass(ECWSEnemyType EnemyType) const;
 	void SpawnNextEnemy();
 	void EvaluateRoundCompletion();
 	void CompleteCurrentRound();

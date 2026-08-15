@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Enemy/CWSEnemyTypes.h"
 #include "GameFramework/Character.h"
 #include "CWSEnemyBase.generated.h"
 
@@ -25,12 +26,27 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy")
 	UCWSHealthComponent* GetHealthComponent() const { return HealthComponent; }
 
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	ECWSEnemyType GetEnemyType() const { return EnemyType; }
+
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	float GetAttackDamage() const { return AttackDamage; }
+
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	float GetAttackInterval() const { return AttackInterval; }
+
+	UFUNCTION(BlueprintPure, Category = "Enemy")
+	float GetMoveSpeed() const;
+
 protected:
 	UFUNCTION()
 	void HandleDeath(AActor* DeadActor);
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
 	TObjectPtr<UCWSHealthComponent> HealthComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy")
+	ECWSEnemyType EnemyType = ECWSEnemyType::Normal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Enemy", meta = (ClampMin = "0.0"))
 	float AttackDamage = 10.0f;

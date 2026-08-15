@@ -66,6 +66,11 @@ bool ACWSEnemyBase::TryAttack(AActor* TargetActor)
 	return true;
 }
 
+float ACWSEnemyBase::GetMoveSpeed() const
+{
+	return GetCharacterMovement()->MaxWalkSpeed;
+}
+
 void ACWSEnemyBase::HandleDeath(AActor* DeadActor)
 {
 	GetCharacterMovement()->DisableMovement();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Enemy/CWSEnemyTypes.h"
 #include "CWSWaveTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -30,6 +31,9 @@ struct ARENASHOOTER_API FCWSRoundSpawnGroup
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave", meta = (ClampMin = "0.05"))
 	float SpawnInterval = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	ECWSEnemyType EnemyType = ECWSEnemyType::Normal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	bool bUseBossClass = false;

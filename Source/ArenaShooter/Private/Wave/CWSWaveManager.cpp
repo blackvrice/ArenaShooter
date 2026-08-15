@@ -3,6 +3,8 @@
 #include "Components/CWSHealthComponent.h"
 #include "Enemy/CWSBossEnemy.h"
 #include "Enemy/CWSEnemyBase.h"
+#include "Enemy/CWSFastEnemy.h"
+#include "Enemy/CWSTankEnemy.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
@@ -17,14 +19,40 @@ namespace
 		const ECWSSpawnDirection Direction,
 		const int32 Count,
 		const float Interval,
-		const bool bUseBossClass = false)
+		const ECWSEnemyType EnemyType = ECWSEnemyType::Normal)
 	{
 		FCWSRoundSpawnGroup Group;
 		Group.Direction = Direction;
 		Group.Count = Count;
 		Group.SpawnInterval = Interval;
-		Group.bUseBossClass = bUseBossClass;
+		Group.EnemyType = EnemyType;
+		Group.bUseBossClass = EnemyType == ECWSEnemyType::Boss;
 		return Group;
+	}
+
+	ECWSEnemyType GetDefaultEnemyType(
+		const int32 RoundNumber,
+		const ECWSSpawnDirection Direction,
+		const bool bUseBossClass)
+	{
+		if (bUseBossClass || Direction == ECWSSpawnDirection::Center)
+		{
+			return ECWSEnemyType::Boss;
+		}
+		if ((RoundNumber == 2 && (Direction == ECWSSpawnDirection::East || Direction == ECWSSpawnDirection::West)) ||
+			(RoundNumber == 3 && (Direction == ECWSSpawnDirection::NorthEast || Direction == ECWSSpawnDirection::SouthWest)) ||
+			(RoundNumber >= 4 && (Direction == ECWSSpawnDirection::North || Direction == ECWSSpawnDirection::South)))
+		{
+			return ECWSEnemyType::Fast;
+		}
+		if ((RoundNumber == 4 &&
+			(Direction == ECWSSpawnDirection::East || Direction == ECWSSpawnDirection::West)) ||
+			(RoundNumber == 3 && (Direction == ECWSSpawnDirection::North || Direction == ECWSSpawnDirection::South)) ||
+			(RoundNumber == 5 && (Direction == ECWSSpawnDirection::East || Direction == ECWSSpawnDirection::West)))
+		{
+			return ECWSEnemyType::Tank;
+		}
+		return ECWSEnemyType::Normal;
 	}
 }
 
@@ -32,6 +60,8 @@ ACWSWaveManager::ACWSWaveManager()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	DefaultEnemyClass = ACWSEnemyBase::StaticClass();
+	FastEnemyClass = ACWSFastEnemy::StaticClass();
+	TankEnemyClass = ACWSTankEnemy::StaticClass();
 	BossEnemyClass = ACWSBossEnemy::StaticClass();
 
 	BuildDefaultRounds();
@@ -163,30 +193,30 @@ void ACWSWaveManager::BuildDefaultRounds()
 	Round2.SpawnGroups = {
 		MakeSpawnGroup(ECWSSpawnDirection::North, 4, 1.0f),
 		MakeSpawnGroup(ECWSSpawnDirection::South, 4, 1.0f),
-		MakeSpawnGroup(ECWSSpawnDirection::East, 4, 1.0f),
-		MakeSpawnGroup(ECWSSpawnDirection::West, 4, 1.0f),
+		MakeSpawnGroup(ECWSSpawnDirection::East, 4, 1.0f, ECWSEnemyType::Fast),
+		MakeSpawnGroup(ECWSSpawnDirection::West, 4, 1.0f, ECWSEnemyType::Fast),
 	};
 	Rounds.Add(Round2);
 
 	FCWSRoundDefinition Round3;
 	Round3.RoundNumber = 3;
 	Round3.SpawnGroups = {
-		MakeSpawnGroup(ECWSSpawnDirection::North, 4, 0.9f),
-		MakeSpawnGroup(ECWSSpawnDirection::South, 4, 0.9f),
+		MakeSpawnGroup(ECWSSpawnDirection::North, 4, 0.9f, ECWSEnemyType::Tank),
+		MakeSpawnGroup(ECWSSpawnDirection::South, 4, 0.9f, ECWSEnemyType::Tank),
 		MakeSpawnGroup(ECWSSpawnDirection::East, 4, 0.9f),
 		MakeSpawnGroup(ECWSSpawnDirection::West, 4, 0.9f),
-		MakeSpawnGroup(ECWSSpawnDirection::NorthEast, 4, 1.1f),
-		MakeSpawnGroup(ECWSSpawnDirection::SouthWest, 4, 1.1f),
+		MakeSpawnGroup(ECWSSpawnDirection::NorthEast, 4, 1.1f, ECWSEnemyType::Fast),
+		MakeSpawnGroup(ECWSSpawnDirection::SouthWest, 4, 1.1f, ECWSEnemyType::Fast),
 	};
 	Rounds.Add(Round3);
 
 	FCWSRoundDefinition Round4;
 	Round4.RoundNumber = 4;
 	Round4.SpawnGroups = {
-		MakeSpawnGroup(ECWSSpawnDirection::North, 5, 0.8f),
-		MakeSpawnGroup(ECWSSpawnDirection::South, 5, 0.8f),
-		MakeSpawnGroup(ECWSSpawnDirection::East, 4, 0.8f),
-		MakeSpawnGroup(ECWSSpawnDirection::West, 4, 0.8f),
+		MakeSpawnGroup(ECWSSpawnDirection::North, 5, 0.8f, ECWSEnemyType::Fast),
+		MakeSpawnGroup(ECWSSpawnDirection::South, 5, 0.8f, ECWSEnemyType::Fast),
+		MakeSpawnGroup(ECWSSpawnDirection::East, 4, 0.8f, ECWSEnemyType::Tank),
+		MakeSpawnGroup(ECWSSpawnDirection::West, 4, 0.8f, ECWSEnemyType::Tank),
 		MakeSpawnGroup(ECWSSpawnDirection::NorthEast, 4, 1.0f),
 		MakeSpawnGroup(ECWSSpawnDirection::NorthWest, 4, 1.0f),
 		MakeSpawnGroup(ECWSSpawnDirection::SouthEast, 4, 1.0f),
@@ -200,11 +230,11 @@ void ACWSWaveManager::BuildDefaultRounds()
 	Round5.PostRoundDelay = 0.0f;
 	Round5.bBossRound = true;
 	Round5.SpawnGroups = {
-		MakeSpawnGroup(ECWSSpawnDirection::Center, 1, 0.1f, true),
-		MakeSpawnGroup(ECWSSpawnDirection::North, 3, 1.2f),
-		MakeSpawnGroup(ECWSSpawnDirection::South, 3, 1.2f),
-		MakeSpawnGroup(ECWSSpawnDirection::East, 2, 1.2f),
-		MakeSpawnGroup(ECWSSpawnDirection::West, 2, 1.2f),
+		MakeSpawnGroup(ECWSSpawnDirection::Center, 1, 0.1f, ECWSEnemyType::Boss),
+		MakeSpawnGroup(ECWSSpawnDirection::North, 3, 1.2f, ECWSEnemyType::Fast),
+		MakeSpawnGroup(ECWSSpawnDirection::South, 3, 1.2f, ECWSEnemyType::Fast),
+		MakeSpawnGroup(ECWSSpawnDirection::East, 2, 1.2f, ECWSEnemyType::Tank),
+		MakeSpawnGroup(ECWSSpawnDirection::West, 2, 1.2f, ECWSEnemyType::Tank),
 		MakeSpawnGroup(ECWSSpawnDirection::NorthEast, 1, 1.5f),
 		MakeSpawnGroup(ECWSSpawnDirection::NorthWest, 1, 1.5f),
 		MakeSpawnGroup(ECWSSpawnDirection::SouthEast, 1, 1.5f),
@@ -254,9 +284,32 @@ void ACWSWaveManager::BuildSpawnQueue(const FCWSRoundDefinition& RoundDefinition
 				PendingSpawn.Direction = Group.Direction;
 				PendingSpawn.Interval = FMath::Max(Group.SpawnInterval, 0.05f);
 				PendingSpawn.bUseBossClass = Group.bUseBossClass;
+				PendingSpawn.EnemyType = bUseDefaultArchetypeComposition
+					? GetDefaultEnemyType(CurrentRound, Group.Direction, Group.bUseBossClass)
+					: Group.bUseBossClass ? ECWSEnemyType::Boss : Group.EnemyType;
 			}
 		}
 	}
+}
+
+UClass* ACWSWaveManager::ResolveEnemyClass(const ECWSEnemyType EnemyType) const
+{
+	const TSoftClassPtr<APawn>* EnemyClassAsset = &DefaultEnemyClass;
+	switch (EnemyType)
+	{
+	case ECWSEnemyType::Fast:
+		EnemyClassAsset = &FastEnemyClass;
+		break;
+	case ECWSEnemyType::Tank:
+		EnemyClassAsset = &TankEnemyClass;
+		break;
+	case ECWSEnemyType::Boss:
+		EnemyClassAsset = &BossEnemyClass;
+		break;
+	default:
+		break;
+	}
+	return EnemyClassAsset->LoadSynchronous();
 }
 
 void ACWSWaveManager::SpawnNextEnemy()
@@ -270,9 +323,7 @@ void ACWSWaveManager::SpawnNextEnemy()
 	const FPendingSpawn PendingSpawn = PendingSpawns[0];
 	PendingSpawns.RemoveAt(0);
 	ACWSSpawnPoint* SpawnPoint = SelectSpawnPoint(PendingSpawn.Direction);
-	const TSoftClassPtr<APawn>& EnemyClassAsset =
-		PendingSpawn.bUseBossClass && !BossEnemyClass.IsNull() ? BossEnemyClass : DefaultEnemyClass;
-	UClass* EnemyClass = EnemyClassAsset.LoadSynchronous();
+	UClass* EnemyClass = ResolveEnemyClass(PendingSpawn.EnemyType);
 
 	if (!SpawnPoint)
 	{
@@ -303,7 +354,7 @@ void ACWSWaveManager::SpawnNextEnemy()
 				Health->OnDeath.AddDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDeath);
 			}
 			AliveEnemies.Add(SpawnedEnemy);
-			if (PendingSpawn.bUseBossClass)
+			if (PendingSpawn.EnemyType == ECWSEnemyType::Boss)
 			{
 				if (ACWSBossEnemy* Boss = Cast<ACWSBossEnemy>(SpawnedEnemy))
 				{
@@ -318,9 +369,10 @@ void ACWSWaveManager::SpawnNextEnemy()
 			UE_LOG(
 				LogCWSWave,
 				Log,
-				TEXT("Round %d spawned %s from %s. Remaining=%d"),
+				TEXT("Round %d spawned %s (%s) from %s. Remaining=%d"),
 				CurrentRound,
 				*GetNameSafe(EnemyClass),
+				*UEnum::GetValueAsString(PendingSpawn.EnemyType),
 				*UEnum::GetValueAsString(PendingSpawn.Direction),
 				GetRemainingEnemyCount());
 		}

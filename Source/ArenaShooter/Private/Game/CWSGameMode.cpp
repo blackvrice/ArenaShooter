@@ -4,6 +4,8 @@
 #include "Components/CWSHitscanWeaponComponent.h"
 #include "Enemy/CWSBossEnemy.h"
 #include "Enemy/CWSEnemyBase.h"
+#include "Enemy/CWSFastEnemy.h"
+#include "Enemy/CWSTankEnemy.h"
 #include "EngineUtils.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Pawn.h"
@@ -338,6 +340,35 @@ void ACWSGameMode::RunCombatSmokeStep()
 
 		if (bSmokeTestAllRounds)
 		{
+			if (ACWSFastEnemy* FastEnemy = Cast<ACWSFastEnemy>(Enemy))
+			{
+				bSmokeSawFastEnemy = true;
+				bSmokeSawFastStats =
+					FMath::IsNearlyEqual(Health->GetMaxHealth(), 35.0f) &&
+					FMath::IsNearlyEqual(FastEnemy->GetMoveSpeed(), 520.0f) &&
+					FMath::IsNearlyEqual(FastEnemy->GetAttackDamage(), 8.0f) &&
+					FMath::IsNearlyEqual(FastEnemy->GetAttackInterval(), 0.65f);
+			}
+			else if (ACWSTankEnemy* TankEnemy = Cast<ACWSTankEnemy>(Enemy))
+			{
+				bSmokeSawTankEnemy = true;
+				bSmokeSawTankStats =
+					FMath::IsNearlyEqual(Health->GetMaxHealth(), 180.0f) &&
+					FMath::IsNearlyEqual(TankEnemy->GetMoveSpeed(), 230.0f) &&
+					FMath::IsNearlyEqual(TankEnemy->GetAttackDamage(), 18.0f) &&
+					FMath::IsNearlyEqual(TankEnemy->GetAttackInterval(), 1.4f);
+			}
+
+			if (!bSmokeLoggedEnemyArchetypes && bSmokeSawFastEnemy && bSmokeSawFastStats &&
+				bSmokeSawTankEnemy && bSmokeSawTankStats)
+			{
+				bSmokeLoggedEnemyArchetypes = true;
+				UE_LOG(
+					LogCWSGame,
+					Display,
+					TEXT("CWS_ENEMY_ARCHETYPES_VERIFIED: Fast 35 health/520 speed/8 damage and Tank 180 health/230 speed/18 damage"));
+			}
+
 			if (ACWSBossEnemy* Boss = Cast<ACWSBossEnemy>(Enemy))
 			{
 				bSmokeSawDedicatedBoss = true;
@@ -452,10 +483,11 @@ void ACWSGameMode::RunCombatSmokeStep()
 		FinishSmokeTest(
 			bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage &&
 				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected &&
+				bSmokeSawFastEnemy && bSmokeSawFastStats && bSmokeSawTankEnemy && bSmokeSawTankStats &&
 				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
 				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
 				SmokeHighestRoundCleared == 5 && bGameCleared,
-			TEXT("Hitscan damage, timed reload, supplies, dedicated boss phases and pattern damage, and all five rounds were verified"));
+			TEXT("Hitscan damage, timed reload, supplies, Fast/Tank archetypes, dedicated boss patterns, and all five rounds were verified"));
 		return;
 	}
 

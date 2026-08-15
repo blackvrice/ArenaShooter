@@ -2,7 +2,7 @@
 
 ## 1. 현재 기준
 
-이 문서는 2026-07-19에 저장된 `/Game/Variant_Combat/Lvl_Combat`의 수동 블록아웃과 플레이 가능한 Round 1 구성을 기준으로 한다. 현재 맵의 저장된 액터 배치가 좌표와 크기의 기준이며, 첨부 PPTX와 `Tools/Editor/build_cws_blockout.py`는 이전 중앙 거점 설계의 참고 자료로만 사용한다.
+이 문서는 2026-07-19에 저장된 `/Game/Variant_Combat/Lvl_Combat`의 수동 블록아웃과 2026-08-15에 검증한 Round 1~5 전투 구성을 기준으로 한다. 현재 맵의 저장된 액터 배치가 좌표와 크기의 기준이며, 첨부 PPTX와 `Tools/Editor/build_cws_blockout.py`는 이전 중앙 거점 설계의 참고 자료로만 사용한다.
 
 Unreal Engine 기준 `1 uu = 1 cm`다. 따라서 `10,000 uu = 100 m`다.
 
@@ -159,17 +159,17 @@ X- ------------------------------------------------------------- X+
 | PlayerStart | `CWS_PlayerStart`, `(0, 1,200, 450)` |
 | GameMode | 네이티브 `ACWSGameMode` |
 | Player | 네이티브 `ACWSPlayerCharacter`, 체력/히트스캔 무기와 탄창·예비 탄약 포함 |
-| Enemy | 네이티브 `ACWSEnemyBase`, NavMesh 추적 및 근접 공격 |
+| Enemy | 네이티브 `ACWSEnemyBase`/`ACWSFastEnemy`/`ACWSTankEnemy`/`ACWSBossEnemy`, NavMesh 추적 및 근접·패턴 공격 |
 | `CWS_WaveManager` | 맵에 배치됨, 게임 시작 시 자동 실행 |
 | 방향별 `CWS_SpawnPoint` | 8방향 + 중앙, 총 9개 배치됨 |
 
 ## 6. 후속 전투 요소
 
-플레이 가능한 Round 1에 필요한 시작점, 내비게이션, 기본 플레이어/적/무기/HUD와 라운드 보급은 구현됐다. 아래 항목은 다음 확장 대상이다.
+플레이 가능한 Round 1~5에 필요한 시작점, 내비게이션, 플레이어/적/무기/HUD, 라운드 보급과 적 타입 구성은 구현됐다. 아래 항목은 다음 확장 대상이다.
 
 | 항목 | 현재 상태 | 다음 결정 |
 |---|---|---|
-| Fast/Tank 전용 클래스 | 미구현 | 현재 일반 그룹은 `ACWSEnemyBase` 사용 |
+| Fast/Tank 전용 클래스 | 구현 | Fast는 측면 압박, Tank는 주 방향 압박에 사용 |
 | Boss 전용 클래스 | 구현 | Round 5 Center 슬롯은 `ACWSBossEnemy` 사용 |
 | 중앙 전투 링 | 미배치 | 유지할지 제거할지 결정 |
 | 보스 전용 별도 스폰 지점 | 미배치 | 현재 Round 5는 Center SpawnPoint를 보스 슬롯으로 재사용 |
@@ -179,9 +179,9 @@ X- ------------------------------------------------------------- X+
 
 ## 7. 웨이브 생성 구현
 
-`ACWSWaveManager`가 게임 시작 후 자동으로 Round 1을 준비한다. 각 라운드는 준비 시간 후 방향별 `ACWSSpawnPoint`에서 `ACWSEnemyBase`를 순차 생성한다. 체력 컴포넌트의 `OnDeath`를 우선 사용하고 `OnDestroyed`를 안전망으로 사용해 남은 적 수와 라운드 클리어를 갱신한다. 모든 적이 제거되면 5초 후 다음 라운드를 시작한다.
+`ACWSWaveManager`가 게임 시작 후 자동으로 Round 1을 준비한다. 각 라운드는 준비 시간 후 방향별 `ACWSSpawnPoint`에서 EnemyType에 맞는 Normal/Fast/Tank/Boss 클래스를 순차 생성한다. 체력 컴포넌트의 `OnDeath`를 우선 사용하고 `OnDestroyed`를 안전망으로 사용해 남은 적 수와 라운드 클리어를 갱신한다. 모든 적이 제거되면 5초 후 다음 라운드를 시작한다.
 
-`DefaultEngine.ini`의 Recast NavMesh는 `Dynamic` 런타임 생성으로 설정했다. 2026-08-15 헤드리스 게임 스모크 테스트에서 실제 히트스캔 피격/사망, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, Round 1 적 8마리의 NavMesh 이동과 클리어, 플레이어 사망 뒤 웨이브 정지와 레벨 재시작을 확인했다. 가속 전체 라운드 테스트에서는 `8 / 16 / 24 / 34 / 15` 스폰, Round 1~4 보급 생성과 Round 1~5 클리어를 확인했다.
+`DefaultEngine.ini`의 Recast NavMesh는 `Dynamic` 런타임 생성으로 설정했다. 2026-08-15 헤드리스 게임 스모크 테스트에서 실제 히트스캔 피격/사망, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, Round 1 적 8마리의 NavMesh 이동과 클리어, 플레이어 사망 뒤 웨이브 정지와 레벨 재시작을 확인했다. 가속 전체 라운드 테스트에서는 `8 / 16 / 24 / 34 / 15` 스폰, Fast/Tank 전용 클래스와 능력치, Round 1~4 보급 생성, 전용 Boss 패턴과 Round 1~5 클리어를 확인했다.
 
 | 방향 | 위치 `(X, Y, Z)` |
 |---|---:|
@@ -198,16 +198,16 @@ X- ------------------------------------------------------------- X+
 | 라운드 | 일반 적 | 빠른 적 | 탱커 적 | 보스 | 총 적 수 | 배치 상태 |
 |---|---:|---:|---:|---:|---:|---|
 | 1R | 8 | 0 | 0 | 0 | 8 | North/South |
-| 2R | 12 | 4 | 0 | 0 | 16 | North/South/East/West |
-| 3R | 16 | 6 | 2 | 0 | 24 | 4방향 + NorthEast/SouthWest |
-| 4R | 22 | 8 | 4 | 0 | 34 | 전체 8방향 |
-| 5R | 8 | 4 | 2 | 1 | 15 | 전체 8방향 + Center |
+| 2R | 8 | 8 | 0 | 0 | 16 | Normal: North/South, Fast: East/West |
+| 3R | 8 | 8 | 8 | 0 | 24 | Tank: North/South, Normal: East/West, Fast: NorthEast/SouthWest |
+| 4R | 16 | 10 | 8 | 0 | 34 | Fast: North/South, Tank: East/West, Normal: 대각 4방향 |
+| 5R | 4 | 6 | 4 | 1 | 15 | Fast: North/South, Tank: East/West, Normal: 대각 4방향, Boss: Center |
 
-현재 Fast/Tank 전용 적 클래스는 없으므로 해당 타입 구분은 밸런스 목표다. 일반 그룹은 `ACWSEnemyBase`를 사용하고 Round 5의 Center 그룹은 `ACWSBossEnemy`를 사용한다. Boss는 체력 1200, 3단계 페이즈, Ground Slam과 넉백 Shockwave 패턴을 가진다.
+Normal은 `ACWSEnemyBase`, Fast는 `ACWSFastEnemy`, Tank는 `ACWSTankEnemy`, Round 5 Center는 `ACWSBossEnemy`를 사용한다. 저장된 기존 맵의 라운드 데이터에는 기본 조합 매핑을 런타임에 적용해 에셋을 재저장하지 않아도 같은 구성이 유지된다. Boss는 체력 1200, 3단계 페이즈, Ground Slam과 넉백 Shockwave 패턴을 가진다.
 
 ## 8. 권장 체력과 데미지
 
-아래 값은 맵 배치와 독립적인 초기 밸런스 목표다. 100 m 전장에서 실제 교전 거리가 길어질 수 있으므로 플레이 테스트 후 이동속도와 추적 범위를 함께 조정한다.
+아래 값은 현재 네이티브 클래스에 적용된 초기 밸런스다. 100 m 전장에서 실제 교전 거리가 길어질 수 있으므로 수동 플레이 테스트 후 이동속도와 추적 범위를 함께 조정한다.
 
 | 타입 | 체력 | 이동속도 | 공격 데미지 | 특징 |
 |---|---:|---:|---:|---|

@@ -10,6 +10,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogCWSBoss, Log, All);
 
 ACWSBossEnemy::ACWSBossEnemy()
 {
+	EnemyType = ECWSEnemyType::Boss;
 	HealthComponent->SetMaxHealth(BossMaxHealth);
 	GetCharacterMovement()->MaxWalkSpeed = 260.0f;
 	AttackDamage = GroundSlamDamage;

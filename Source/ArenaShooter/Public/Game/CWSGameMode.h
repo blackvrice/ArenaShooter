@@ -88,6 +88,11 @@ private:
 	bool bSmokeSawBossFinalPhase = false;
 	bool bSmokeSawBossGroundSlamDamage = false;
 	bool bSmokeSawBossShockwaveDamage = false;
+	bool bSmokeSawFastEnemy = false;
+	bool bSmokeSawFastStats = false;
+	bool bSmokeSawTankEnemy = false;
+	bool bSmokeSawTankStats = false;
+	bool bSmokeLoggedEnemyArchetypes = false;
 	bool bSmokeWeaponTargetSpawned = false;
 	bool bSmokeWeaponAimPrimed = false;
 	bool bSmokeSawWeaponDamage = false;

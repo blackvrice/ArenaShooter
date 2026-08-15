@@ -31,6 +31,8 @@ Blueprint
 | `UCWSHealthComponent` | `UActorComponent` | 체력, 엔진 데미지 수신, 사망 이벤트 | 구현 |
 | `UCWSHitscanWeaponComponent` | `UActorComponent` | 히트스캔, 탄창/예비 탄약, 시간 기반 재장전, 발사 간격, 포인트 데미지 | 구현 |
 | `ACWSEnemyBase` | `ACharacter` | 기본 적 체력, 이동속도, 근접 공격과 사망 | 구현 |
+| `ACWSFastEnemy` | `ACWSEnemyBase` | 저체력·고속·짧은 공격 간격의 측면 압박 적 | 구현 |
+| `ACWSTankEnemy` | `ACWSEnemyBase` | 고체력·저속·고데미지의 전면 압박 적 | 구현 |
 | `ACWSEnemyAIController` | `AAIController` | 플레이어 추적 및 공격 거리 제어 | 구현 |
 | `ACWSSpawnPoint` | `AActor` | 방향별 스폰 위치 | 구현 |
 | `ACWSWaveManager` | `AActor` | 라운드 진행, 적 스폰, 사망/클리어 판정 | 구현 |
@@ -111,7 +113,8 @@ GameMode BeginPlay
 - 방향 그룹을 라운드 로빈 순서로 큐에 넣어 한 방향에 스폰이 몰리지 않게 한다.
 - 생성된 적의 `OnDeath` 이벤트로 즉시 남은 적을 갱신하고 `OnDestroyed`를 안전망으로 유지한다.
 - `OnRoundStarted`, `OnRemainingEnemyCountChanged`, `OnRoundCleared`, `OnAllRoundsCompleted` Blueprint delegate를 제공한다.
-- 기본 적 슬롯은 네이티브 `ACWSEnemyBase`, Round 5 Center 보스 슬롯은 `ACWSBossEnemy`를 사용한다.
+- `ECWSEnemyType`과 방향별 SpawnGroup을 이용해 `ACWSEnemyBase`, `ACWSFastEnemy`, `ACWSTankEnemy`, `ACWSBossEnemy`를 선택한다.
+- 저장된 기존 라운드 데이터에도 `bUseDefaultArchetypeComposition` 매핑을 적용해 맵 에셋 재저장 없이 기본 조합을 유지한다.
 - Boss 슬롯 생성 시 `OnBossSpawned`를 브로드캐스트해 HUD, VFX, 사운드가 연결될 수 있다.
 
 ## 7. SpawnPoint 설계
@@ -132,14 +135,14 @@ GameMode BeginPlay
 
 ## 8. EnemyBase 설계
 
-`ACWSEnemyBase`는 체력 60, 이동속도 350, 근접 공격 거리/데미지/간격을 제공한다. `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `ApplyDamage`를 호출한다. 사망하면 이동과 충돌을 끄고 웨이브 매니저에 `OnDeath`를 전달한다.
+`ACWSEnemyBase`는 체력 60, 이동속도 350, 공격력 10의 Normal 적이며 근접 공격 거리/데미지/간격을 제공한다. `ACWSFastEnemy`는 체력 35, 속도 520, 공격력 8, 공격 간격 0.65초이고, `ACWSTankEnemy`는 체력 180, 속도 230, 공격력 18, 공격 간격 1.4초다. 세 타입 모두 `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `ApplyDamage`를 호출한다. 사망하면 이동과 충돌을 끄고 웨이브 매니저에 `OnDeath`를 전달한다.
 
 ## 9. 전투 흐름 런타임 검증
 
 - `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
-- `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점과 `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
+- `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점, Normal/Fast/Tank/Boss 클래스 연결, `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
 - `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
-- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, Round 1~4 보급 생성, 각 라운드 클리어와 최종 게임 클리어 검사
+- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, Fast/Tank 클래스와 능력치, Round 1~4 보급 생성, 각 라운드 클리어와 최종 게임 클리어 검사
 - 전체 라운드 검증은 전용 Boss 클래스, 체력 1200, 최종 페이즈 전환, Ground Slam과 Shockwave 피해/넉백 경로도 함께 검사한다.
 - Warm DDC 직렬화 오류가 감지되면 스모크 러너가 격리된 Cold DDC로 한 번 자동 재시도한다.
 - `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사
