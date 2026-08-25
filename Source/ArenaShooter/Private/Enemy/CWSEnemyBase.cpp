@@ -1,5 +1,7 @@
 #include "Enemy/CWSEnemyBase.h"
 
+#include "Audio/CWSCombatSound.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CWSHealthComponent.h"
 #include "Enemy/CWSEnemyAIController.h"
@@ -49,6 +51,9 @@ ACWSEnemyBase::ACWSEnemyBase()
 	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> HitReactionAsset(
 		TEXT("/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_01.MM_HitReact_Front_Lgt_01"));
 	HitReactionAnimation = HitReactionAsset.Object;
+	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> AttackAnimationAsset(
+		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_01.MM_Attack_01"));
+	AttackAnimation = AttackAnimationAsset.Object;
 	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> DeathAnimationAsset(
 		TEXT("/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_01.MM_Death_Front_01"));
 	DeathAnimation = DeathAnimationAsset.Object;
@@ -86,8 +91,56 @@ bool ACWSEnemyBase::TryAttack(AActor* TargetActor)
 	}
 
 	NextAllowedAttackTime = World->GetTimeSeconds() + AttackInterval;
+	PlayAttackAnimation();
+	if (PlayCWSCombatSound(this, GetActorLocation(), ECWSCombatSoundType::EnemyAttack, 0.8f))
+	{
+		++AttackSoundPlayCount;
+	}
 	UGameplayStatics::ApplyDamage(TargetActor, AttackDamage, GetController(), this, UDamageType::StaticClass());
 	return true;
+}
+
+bool ACWSEnemyBase::PlayAttackAnimation()
+{
+	if (!AttackAnimation)
+	{
+		return false;
+	}
+	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	{
+		if (AnimInstance->PlaySlotAnimationAsDynamicMontage(
+			AttackAnimation,
+			TEXT("DefaultSlot"),
+			0.04f,
+			0.12f,
+			1.0f,
+			1,
+			0.0f,
+			0.0f))
+		{
+			++AttackAnimationCount;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool ACWSEnemyBase::StageAttackPoseForCapture(const float NormalizedTime)
+{
+	if (!AttackAnimation)
+	{
+		return false;
+	}
+	GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	GetMesh()->PlayAnimation(AttackAnimation, false);
+	if (UAnimSingleNodeInstance* AnimationInstance = GetMesh()->GetSingleNodeInstance())
+	{
+		AnimationInstance->SetPosition(
+			AttackAnimation->GetPlayLength() * FMath::Clamp(NormalizedTime, 0.0f, 1.0f),
+			false);
+		return true;
+	}
+	return false;
 }
 
 float ACWSEnemyBase::GetMoveSpeed() const

@@ -51,6 +51,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Weapon|Feedback")
 	int32 GetImpactEffectSpawnCount() const { return ImpactEffectSpawnCount; }
 
+	UFUNCTION(BlueprintPure, Category = "Weapon|Feedback")
+	int32 GetFireSoundPlayCount() const { return FireSoundPlayCount; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon|Feedback")
+	int32 GetImpactSoundPlayCount() const { return ImpactSoundPlayCount; }
+
 	UPROPERTY(BlueprintAssignable, Category = "Weapon|Events")
 	FCWSAmmoChangedEvent OnAmmoChanged;
 
@@ -99,5 +105,7 @@ private:
 	float NextAllowedFireTime = 0.0f;
 	bool bIsReloading = false;
 	int32 ImpactEffectSpawnCount = 0;
+	int32 FireSoundPlayCount = 0;
+	int32 ImpactSoundPlayCount = 0;
 	FTimerHandle ReloadTimerHandle;
 };

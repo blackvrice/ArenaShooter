@@ -77,6 +77,20 @@ void ACWSGameMode::BeginPlay()
 		UE_LOG(LogCWSGame, Display, TEXT("CWS_COMBAT_FEEDBACK_SCREENSHOT_STARTED"));
 	}
 
+	bAttackFeedbackScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSAttackFeedbackScreenshotTest"));
+	if (bAttackFeedbackScreenshotTest)
+	{
+		AttackFeedbackScreenshotStartTime = GetWorld()->GetTimeSeconds();
+		GetWorldTimerManager().SetTimer(
+			AttackFeedbackScreenshotTimer,
+			this,
+			&ACWSGameMode::RunAttackFeedbackScreenshotStep,
+			0.05f,
+			true,
+			0.1f);
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_ATTACK_FEEDBACK_SCREENSHOT_STARTED"));
+	}
+
 	bSmokeTestAllRounds = FParse::Param(FCommandLine::Get(), TEXT("CWSAllRoundsSmokeTest"));
 	bSmokeTestEnabled = bSmokeTestAllRounds || FParse::Param(FCommandLine::Get(), TEXT("CWSRoundOneSmokeTest"));
 	if (!bSmokeTestEnabled)
@@ -386,6 +400,141 @@ void ACWSGameMode::FinishCombatFeedbackScreenshotTest()
 		bSucceeded ? TEXT("CWS combat feedback screenshot captured") : TEXT("CWS combat feedback screenshot failed"));
 }
 
+void ACWSGameMode::RunAttackFeedbackScreenshotStep()
+{
+	if (!bAttackFeedbackScreenshotTest || bAttackFeedbackScreenshotRequested || !GetWorld())
+	{
+		return;
+	}
+	if (GetWorld()->GetTimeSeconds() - AttackFeedbackScreenshotStartTime > 12.0f)
+	{
+		UE_LOG(LogCWSGame, Error, TEXT("CWS_ATTACK_FEEDBACK_SCREENSHOT_FAILURE: attack state was not reached"));
+		FPlatformMisc::RequestExitWithStatus(true, 9, TEXT("CWS attack feedback screenshot test timed out"));
+		return;
+	}
+
+	BindGameplayActors();
+	ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	APlayerController* PlayerController = PlayerCharacter ? Cast<APlayerController>(PlayerCharacter->GetController()) : nullptr;
+	if (!PlayerCharacter || !PlayerController || !PlayerHealth.IsValid() || !WaveManager.IsValid())
+	{
+		return;
+	}
+	if (!bAttackFeedbackArenaPrepared)
+	{
+		if (WaveManager->GetWavePhase() != ECWSWavePhase::Preparing)
+		{
+			return;
+		}
+		WaveManager->StopWaveSystem();
+		PlayerCharacter->GetMesh()->SetVisibility(false, true);
+		bAttackFeedbackArenaPrepared = true;
+		return;
+	}
+
+	ACWSEnemyBase* Target = AttackFeedbackScreenshotTarget.Get();
+	if (!Target)
+	{
+		const FVector GroundForward = PlayerCharacter->GetActorForwardVector().GetSafeNormal2D();
+		const FVector TargetLocation = PlayerCharacter->GetActorLocation() + GroundForward * 450.0f;
+		FActorSpawnParameters SpawnParameters;
+		SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		Target = GetWorld()->SpawnActor<ACWSEnemyBase>(
+			ACWSEnemyBase::StaticClass(),
+			TargetLocation,
+			(-GroundForward).Rotation(),
+			SpawnParameters);
+		if (!Target)
+		{
+			return;
+		}
+		Target->GetCharacterMovement()->DisableMovement();
+		Target->DetachFromControllerPendingDestroy();
+		AttackFeedbackScreenshotTarget = Target;
+		return;
+	}
+
+	FVector ViewLocation;
+	FRotator ViewRotation;
+	PlayerController->GetPlayerViewPoint(ViewLocation, ViewRotation);
+	PlayerController->SetControlRotation(
+		(Target->GetActorLocation() + FVector(0.0f, 0.0f, 85.0f) - ViewLocation).Rotation());
+	if (!bAttackFeedbackTriggered)
+	{
+		const FVector OriginalPlayerLocation = PlayerCharacter->GetActorLocation();
+		PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+		PlayerCharacter->TeleportTo(
+			Target->GetActorLocation() + Target->GetActorForwardVector() * 100.0f,
+			PlayerCharacter->GetActorRotation());
+		const float HealthBeforeAttack = PlayerHealth->GetCurrentHealth();
+		const bool bAttackExecuted = Target->TryAttack(PlayerCharacter);
+		bAttackFeedbackVerified =
+			bAttackExecuted && PlayerHealth->GetCurrentHealth() < HealthBeforeAttack &&
+			Target->GetAttackAnimationCount() > 0 && Target->GetAttackSoundPlayCount() > 0 &&
+			Target->StageAttackPoseForCapture(0.38f);
+		PlayerCharacter->TeleportTo(OriginalPlayerLocation, PlayerCharacter->GetActorRotation());
+		PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+		if (!bAttackFeedbackVerified)
+		{
+			UE_LOG(LogCWSGame, Error, TEXT("CWS_ATTACK_FEEDBACK_SCREENSHOT_FAILURE: attack feedback did not trigger"));
+			FPlatformMisc::RequestExitWithStatus(true, 10, TEXT("CWS attack feedback was not triggered"));
+			return;
+		}
+		bAttackFeedbackTriggered = true;
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.05f);
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_ATTACK_FEEDBACK_VERIFIED: damage, MM_Attack_01 montage, staged pose, and attack sound"));
+		return;
+	}
+	if (++AttackFeedbackCaptureDelaySteps < 3)
+	{
+		return;
+	}
+
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
+	bAttackFeedbackScreenshotRequested = true;
+	GetWorldTimerManager().ClearTimer(AttackFeedbackScreenshotTimer);
+	const FString ScreenshotDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots"));
+	IFileManager::Get().MakeDirectory(*ScreenshotDirectory, true);
+	AttackFeedbackScreenshotPath = FPaths::Combine(ScreenshotDirectory, TEXT("CWSEnemyAttackFeedback.png"));
+	IFileManager::Get().Delete(*AttackFeedbackScreenshotPath, false, true);
+	FScreenshotRequest::RequestScreenshot(AttackFeedbackScreenshotPath, true, false);
+	UE_LOG(LogCWSGame, Display, TEXT("CWS_ATTACK_FEEDBACK_SCREENSHOT_REQUESTED: %s"), *AttackFeedbackScreenshotPath);
+	GetWorldTimerManager().SetTimer(
+		AttackFeedbackScreenshotExitTimer,
+		this,
+		&ACWSGameMode::FinishAttackFeedbackScreenshotTest,
+		1.0f,
+		false);
+}
+
+void ACWSGameMode::FinishAttackFeedbackScreenshotTest()
+{
+	const int64 ScreenshotSize = IFileManager::Get().FileSize(*AttackFeedbackScreenshotPath);
+	const bool bSucceeded = bAttackFeedbackVerified && ScreenshotSize > 0;
+	if (bSucceeded)
+	{
+		UE_LOG(
+			LogCWSGame,
+			Display,
+			TEXT("CWS_ATTACK_FEEDBACK_SCREENSHOT_SUCCESS: %s Size=%lld"),
+			*AttackFeedbackScreenshotPath,
+			ScreenshotSize);
+	}
+	else
+	{
+		UE_LOG(
+			LogCWSGame,
+			Error,
+			TEXT("CWS_ATTACK_FEEDBACK_SCREENSHOT_FAILURE: %s Size=%lld"),
+			*AttackFeedbackScreenshotPath,
+			ScreenshotSize);
+	}
+	FPlatformMisc::RequestExitWithStatus(
+		true,
+		bSucceeded ? 0 : 11,
+		bSucceeded ? TEXT("CWS attack feedback screenshot captured") : TEXT("CWS attack feedback screenshot failed"));
+}
+
 void ACWSGameMode::ConfigureAllRoundsSmokeTimings()
 {
 	if (bSmokeTimingsConfigured || !WaveManager.IsValid())
@@ -462,6 +611,8 @@ void ACWSGameMode::RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharacter)
 
 	const float HealthBeforeShot = TargetHealth->GetCurrentHealth();
 	const int32 ImpactEffectsBeforeShot = Weapon->GetImpactEffectSpawnCount();
+	const int32 FireSoundsBeforeShot = Weapon->GetFireSoundPlayCount();
+	const int32 ImpactSoundsBeforeShot = Weapon->GetImpactSoundPlayCount();
 	if (!Weapon->TryFire())
 	{
 		return;
@@ -469,6 +620,8 @@ void ACWSGameMode::RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharacter)
 	if (TargetHealth->GetCurrentHealth() < HealthBeforeShot)
 	{
 		bSmokeSawWeaponDamage = true;
+		bSmokeSawFireSound = bSmokeSawFireSound || Weapon->GetFireSoundPlayCount() > FireSoundsBeforeShot;
+		bSmokeSawImpactSound = bSmokeSawImpactSound || Weapon->GetImpactSoundPlayCount() > ImpactSoundsBeforeShot;
 		bSmokeSawHitReaction = bSmokeSawHitReaction || Target->GetHitReactionCount() > 0;
 		bSmokeSawImpactEffect = bSmokeSawImpactEffect || Weapon->GetImpactEffectSpawnCount() > ImpactEffectsBeforeShot;
 	}
@@ -480,17 +633,20 @@ void ACWSGameMode::RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharacter)
 		UE_LOG(
 			LogCWSGame,
 			Display,
-			TEXT("CWS_COMBAT_FEEDBACK_SMOKE_STATE: HitReaction=%s ImpactEffect=%s DeathAnimation=%s DeathEffect=%s"),
+			TEXT("CWS_COMBAT_FEEDBACK_SMOKE_STATE: FireSound=%s ImpactSound=%s HitReaction=%s ImpactEffect=%s DeathAnimation=%s DeathEffect=%s"),
+			bSmokeSawFireSound ? TEXT("true") : TEXT("false"),
+			bSmokeSawImpactSound ? TEXT("true") : TEXT("false"),
 			bSmokeSawHitReaction ? TEXT("true") : TEXT("false"),
 			bSmokeSawImpactEffect ? TEXT("true") : TEXT("false"),
 			bSmokeSawDeathAnimation ? TEXT("true") : TEXT("false"),
 			bSmokeSawDeathEffect ? TEXT("true") : TEXT("false"));
-		if (bSmokeSawHitReaction && bSmokeSawImpactEffect && bSmokeSawDeathAnimation && bSmokeSawDeathEffect)
+		if (bSmokeSawFireSound && bSmokeSawImpactSound && bSmokeSawHitReaction && bSmokeSawImpactEffect &&
+			bSmokeSawDeathAnimation && bSmokeSawDeathEffect)
 		{
 			UE_LOG(
 				LogCWSGame,
 				Display,
-				TEXT("CWS_COMBAT_FEEDBACK_SMOKE_VERIFIED: hitscan damage, impact Niagara, hit reaction, death animation, and death effect"));
+				TEXT("CWS_COMBAT_FEEDBACK_SMOKE_VERIFIED: fire/impact sound, hitscan damage, impact Niagara, hit reaction, death animation, and death effect"));
 		}
 	}
 }
@@ -611,7 +767,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 	{
 		if (PlayerCharacter && WaveManager.IsValid() && PlayerHealth.IsValid() && !bGameOver && !bGameCleared)
 		{
-			FinishSmokeTest(true, TEXT("Hitscan combat feedback, timed reload, supplies, player death, wave stop, and level restart were verified"));
+			FinishSmokeTest(true, TEXT("Combat sounds, enemy attack animation, timed reload, supplies, player death, wave stop, and level restart were verified"));
 		}
 		else if (World->GetTimeSeconds() - SmokeStartTime > 10.0f)
 		{
@@ -704,22 +860,25 @@ void ACWSGameMode::RunCombatSmokeStep()
 						Boss->GetLastPattern() == ECWSBossPattern::Shockwave &&
 						Boss->GetPatternExecutionCount() >= 2 &&
 						PlayerHealth->GetCurrentHealth() < PlayerHealthBeforeShockwave;
+					bSmokeSawBossExplosionSound = Boss->GetExplosionSoundPlayCount() >= 2;
 					PlayerCharacter->TeleportTo(OriginalPlayerLocation, PlayerCharacter->GetActorRotation());
 					PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
 					PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
 
 					if (bSmokeSawBossMaxHealth && bSmokeSawBossFinalPhase &&
-						bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage)
+						bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
+						bSmokeSawBossExplosionSound)
 					{
 						UE_LOG(
 							LogCWSGame,
 							Display,
-							TEXT("CWS_BOSS_SMOKE_VERIFIED: class, 1200 health, final phase, ground slam, shockwave damage, and knockback path"));
+							TEXT("CWS_BOSS_SMOKE_VERIFIED: class, 1200 health, final phase, ground slam, shockwave damage, knockback, and explosion sound"));
 					}
 				}
 
 				if (bSmokeSawBossMaxHealth && bSmokeSawBossFinalPhase &&
-					bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage)
+					bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
+					bSmokeSawBossExplosionSound)
 				{
 					Health->Kill(this);
 					continue;
@@ -737,7 +896,39 @@ void ACWSGameMode::RunCombatSmokeStep()
 		if (FVector::DistSquared(*StartLocation, Enemy->GetActorLocation()) >= FMath::Square(25.0f))
 		{
 			bSmokeSawEnemyMovement = true;
-			Health->Kill(this);
+			if ((!bSmokeSawEnemyAttackDamage || !bSmokeSawEnemyAttackAnimation || !bSmokeSawEnemyAttackSound) &&
+				!Cast<ACWSBossEnemy>(Enemy) && PlayerCharacter && PlayerHealth.IsValid())
+			{
+				const FVector OriginalPlayerLocation = PlayerCharacter->GetActorLocation();
+				PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+				PlayerCharacter->TeleportTo(
+					Enemy->GetActorLocation() + Enemy->GetActorForwardVector() * 100.0f,
+					PlayerCharacter->GetActorRotation());
+				const float HealthBeforeAttack = PlayerHealth->GetCurrentHealth();
+				const int32 AnimationsBeforeAttack = Enemy->GetAttackAnimationCount();
+				const int32 SoundsBeforeAttack = Enemy->GetAttackSoundPlayCount();
+				const bool bAttackExecuted = Enemy->TryAttack(PlayerCharacter);
+				bSmokeSawEnemyAttackDamage = bSmokeSawEnemyAttackDamage ||
+					(bAttackExecuted && PlayerHealth->GetCurrentHealth() < HealthBeforeAttack);
+				bSmokeSawEnemyAttackAnimation = bSmokeSawEnemyAttackAnimation ||
+					Enemy->GetAttackAnimationCount() > AnimationsBeforeAttack;
+				bSmokeSawEnemyAttackSound = bSmokeSawEnemyAttackSound ||
+					Enemy->GetAttackSoundPlayCount() > SoundsBeforeAttack;
+				PlayerCharacter->TeleportTo(OriginalPlayerLocation, PlayerCharacter->GetActorRotation());
+				PlayerCharacter->GetCharacterMovement()->StopMovementImmediately();
+				PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+				if (bSmokeSawEnemyAttackDamage && bSmokeSawEnemyAttackAnimation && bSmokeSawEnemyAttackSound)
+				{
+					UE_LOG(
+						LogCWSGame,
+						Display,
+						TEXT("CWS_ENEMY_ATTACK_FEEDBACK_VERIFIED: damage, MM_Attack_01 montage, and procedural attack sound"));
+				}
+			}
+			if (bSmokeSawEnemyAttackDamage && bSmokeSawEnemyAttackAnimation && bSmokeSawEnemyAttackSound)
+			{
+				Health->Kill(this);
+			}
 		}
 	}
 
@@ -766,7 +957,9 @@ void ACWSGameMode::RunCombatSmokeStep()
 		{
 			const bool bCombatFlowVerified =
 				bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage &&
-				bSmokeSawHitReaction && bSmokeSawImpactEffect && bSmokeSawDeathAnimation && bSmokeSawDeathEffect &&
+				bSmokeSawFireSound && bSmokeSawImpactSound && bSmokeSawHitReaction && bSmokeSawImpactEffect &&
+				bSmokeSawDeathAnimation && bSmokeSawDeathEffect && bSmokeSawEnemyAttackDamage &&
+				bSmokeSawEnemyAttackAnimation && bSmokeSawEnemyAttackSound &&
 				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected && CanRestart();
 			if (!bCombatFlowVerified)
 			{
@@ -785,14 +978,17 @@ void ACWSGameMode::RunCombatSmokeStep()
 	{
 		FinishSmokeTest(
 			bSmokeSawPlayer && bSmokeSawEnemyMovement && bSmokeSawWeaponDamage &&
-				bSmokeSawHitReaction && bSmokeSawImpactEffect && bSmokeSawDeathAnimation && bSmokeSawDeathEffect &&
+				bSmokeSawFireSound && bSmokeSawImpactSound && bSmokeSawHitReaction && bSmokeSawImpactEffect &&
+				bSmokeSawDeathAnimation && bSmokeSawDeathEffect && bSmokeSawEnemyAttackDamage &&
+				bSmokeSawEnemyAttackAnimation && bSmokeSawEnemyAttackSound &&
 				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected &&
 				bSmokeSawFastEnemy && bSmokeSawFastStats && bSmokeSawTankEnemy && bSmokeSawTankStats &&
 				bSmokeSawPreparingPhase && bSmokeSawActivePhase && bSmokeSawRoundClearedPhase && bSmokeSawCompletedPhase &&
 				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
 				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
+				bSmokeSawBossExplosionSound &&
 				SmokeHighestRoundCleared == 5 && bGameCleared,
-			TEXT("Hitscan damage, combat feedback, timed reload, supplies, round announcement phases, Fast/Tank archetypes, dedicated boss patterns, and all five rounds were verified"));
+			TEXT("Combat sounds, enemy attack animation, timed reload, supplies, round announcement phases, Fast/Tank archetypes, boss explosion sound, and all five rounds were verified"));
 		return;
 	}
 

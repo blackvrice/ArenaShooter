@@ -142,18 +142,19 @@ GameMode BeginPlay
 
 ## 8. EnemyBase 설계
 
-`ACWSEnemyBase`는 체력 60, 이동속도 350, 공격력 10의 Normal 적이며 근접 공격 거리/데미지/간격을 제공한다. `ACWSFastEnemy`는 체력 35, 속도 520, 공격력 8, 공격 간격 0.65초이고, `ACWSTankEnemy`는 체력 180, 속도 230, 공격력 18, 공격 간격 1.4초다. 세 타입 모두 `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `ApplyDamage`를 호출한다. 비치명타에는 additive 피격 애니메이션을 재생하고, 사망하면 이동과 충돌을 끈 뒤 사망 애니메이션과 확대된 `NS_Damage` Niagara를 재생하며 웨이브 매니저에 `OnDeath`를 전달한다.
+`ACWSEnemyBase`는 체력 60, 이동속도 350, 공격력 10의 Normal 적이며 근접 공격 거리/데미지/간격을 제공한다. `ACWSFastEnemy`는 체력 35, 속도 520, 공격력 8, 공격 간격 0.65초이고, `ACWSTankEnemy`는 체력 180, 속도 230, 공격력 18, 공격 간격 1.4초다. 세 타입 모두 `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `MM_Attack_01` 동적 몽타주와 공격음을 재생한 뒤 `ApplyDamage`를 호출한다. 비치명타에는 additive 피격 애니메이션을 재생하고, 사망하면 이동과 충돌을 끈 뒤 사망 애니메이션과 확대된 `NS_Damage` Niagara를 재생하며 웨이브 매니저에 `OnDeath`를 전달한다. 보스의 Ground Slam과 Shockwave는 같은 공격 애니메이션 경로와 별도의 저역 폭발음을 사용한다.
 
-`UCWSHitscanWeaponComponent`는 Visibility 라인트레이스 충돌 지점에 `NS_Damage` Niagara를 생성한 뒤 포인트 데미지를 적용한다. `-nullrhi` 스모크에서는 유효한 이펙트 생성 경로 실행을 카운터로 검사하고, 렌더링 결과는 별도 오프스크린 캡처로 확인한다.
+`UCWSHitscanWeaponComponent`는 발사 위치에서 총성을 재생하고 Visibility 라인트레이스 충돌 지점에 충돌음과 `NS_Damage` Niagara를 생성한 뒤 포인트 데미지를 적용한다. `UCWSCombatSoundWave`가 44.1 kHz mono PCM을 런타임에 합성하므로 외부 오디오 에셋 없이 Editor와 Shipping에서 동일한 발사/충돌/근접/폭발 음향 경로를 사용한다. `-nullrhi -nosound` 스모크에서는 PCM 큐와 이펙트 생성 경로 실행을 카운터로 검사하고, 실제 XAudio2 장치와 렌더링 결과는 별도 오프스크린 캡처로 확인한다.
 
 ## 9. 전투 흐름 런타임 검증
 
 - `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
 - `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점, Normal/Fast/Tank/Boss 클래스 연결, `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
-- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 피격/사망 애니메이션과 Niagara 생성 경로, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, `Preparing → Active → RoundCleared` 페이즈, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
-- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, 전투 피드백, Fast/Tank 클래스와 능력치, Round 1~4 보급 생성, 각 라운드 클리어, 라운드 공지 페이즈와 최종 `Completed` 전환 검사
+- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 발사/충돌 PCM 생성, 일반 적 공격 피해/몽타주/공격음, 피격/사망 애니메이션과 Niagara 생성 경로, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, `Preparing → Active → RoundCleared` 페이즈, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
+- `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, 전투 피드백, Fast/Tank 클래스와 능력치, Boss Ground Slam/Shockwave 폭발음, Round 1~4 보급 생성, 각 라운드 클리어, 라운드 공지 페이즈와 최종 `Completed` 전환 검사
 - `run_hud_screenshot.ps1`: Round 1 `Preparing` 상태를 1280×720 오프스크린으로 렌더링해 중앙 카운트다운 HUD 스크린샷 생성 검사
 - `run_combat_feedback_screenshot.ps1`: 오프스크린 게임 월드에서 피격 애니메이션과 Niagara를 예열한 뒤 사망 포즈와 사망 Niagara가 함께 보이는 1280×720 스크린샷 생성 검사
+- `run_attack_feedback_screenshot.ps1`: 실제 오디오 장치를 초기화한 오프스크린 게임 월드에서 일반 적의 피해·공격 몽타주·공격음을 검사하고 `MM_Attack_01` 공격 자세가 보이는 1280×720 스크린샷 생성 검사
 - 전체 라운드 검증은 전용 Boss 클래스, 체력 1200, 최종 페이즈 전환, Ground Slam과 Shockwave 피해/넉백 경로도 함께 검사한다.
 - Warm DDC 직렬화 오류가 감지되면 스모크 러너가 격리된 Cold DDC로 한 번 자동 재시도한다.
 - `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사

@@ -53,6 +53,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
 	int32 GetDeathEffectSpawnCount() const { return DeathEffectSpawnCount; }
 
+	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
+	int32 GetAttackAnimationCount() const { return AttackAnimationCount; }
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
+	int32 GetAttackSoundPlayCount() const { return AttackSoundPlayCount; }
+
+	bool StageAttackPoseForCapture(float NormalizedTime);
+
 protected:
 	UFUNCTION()
 	void HandleHealthChanged(
@@ -83,10 +91,15 @@ protected:
 	TObjectPtr<UAnimSequenceBase> HitReactionAnimation;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
+	TObjectPtr<UAnimSequenceBase> AttackAnimation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
 	TObjectPtr<UAnimSequenceBase> DeathAnimation;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
 	TObjectPtr<UNiagaraSystem> DeathEffect;
+
+	bool PlayAttackAnimation();
 
 private:
 	void FinishHitReaction();
@@ -96,6 +109,8 @@ private:
 	float NextAllowedAttackTime = 0.0f;
 	float LastObservedHealth = 0.0f;
 	int32 HitReactionCount = 0;
+	int32 AttackAnimationCount = 0;
+	int32 AttackSoundPlayCount = 0;
 	int32 DeathEffectSpawnCount = 0;
 	bool bHitReactionActive = false;
 	bool bDeathAnimationPlayed = false;

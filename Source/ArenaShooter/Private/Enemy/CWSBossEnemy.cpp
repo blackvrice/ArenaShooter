@@ -1,5 +1,6 @@
 #include "Enemy/CWSBossEnemy.h"
 
+#include "Audio/CWSCombatSound.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CWSHealthComponent.h"
 #include "GameFramework/Character.h"
@@ -59,6 +60,11 @@ bool ACWSBossEnemy::TryAttack(AActor* TargetActor)
 		? 2.4f
 		: BossPhase == ECWSBossPhase::PhaseTwo ? 1.8f : 1.1f;
 	NextPatternTime = World->GetTimeSeconds() + PhaseInterval;
+	PlayAttackAnimation();
+	if (PlayCWSCombatSound(this, GetActorLocation(), ECWSCombatSoundType::BossExplosion, 1.2f))
+	{
+		++ExplosionSoundPlayCount;
+	}
 	RecordPattern(Pattern);
 	return true;
 }

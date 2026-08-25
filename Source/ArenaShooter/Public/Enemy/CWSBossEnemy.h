@@ -43,6 +43,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Boss")
 	int32 GetPatternExecutionCount() const { return PatternExecutionCount; }
 
+	UFUNCTION(BlueprintPure, Category = "Boss|Feedback")
+	int32 GetExplosionSoundPlayCount() const { return ExplosionSoundPlayCount; }
+
 	UFUNCTION(BlueprintPure, Category = "Boss")
 	FString GetBossPhaseLabel() const;
 
@@ -94,6 +97,8 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Boss")
 	int32 PatternExecutionCount = 0;
+
+	int32 ExplosionSoundPlayCount = 0;
 
 	float NextPatternTime = 0.0f;
 	bool bUseShockwaveNext = false;

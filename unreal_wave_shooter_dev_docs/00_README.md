@@ -28,6 +28,7 @@
 | 09_DevelopmentRoadmap.md | 개발 순서 |
 | 10_AIPromptGuide.md | AI에게 코드 작성을 요청할 때 사용할 프롬프트 |
 | 11_BuildAndPackaging.md | Windows Shipping 패키징과 배포본 검증 |
+| 12_CompletionProgressLog.md | 남은 개발 항목의 순차 구현·검증 기록 |
 
 ## AI에게 우선 전달할 핵심 문서
 

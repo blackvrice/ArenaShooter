@@ -1,5 +1,6 @@
 #include "Components/CWSHitscanWeaponComponent.h"
 
+#include "Audio/CWSCombatSound.h"
 #include "DrawDebugHelpers.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
@@ -61,6 +62,10 @@ bool UCWSHitscanWeaponComponent::TryFire()
 	NextAllowedFireTime = World->GetTimeSeconds() + FireInterval;
 	--CurrentAmmo;
 	OnAmmoChanged.Broadcast(CurrentAmmo, MaxAmmo);
+	if (PlayCWSCombatSound(this, ViewLocation, ECWSCombatSoundType::WeaponFire, 0.85f))
+	{
+		++FireSoundPlayCount;
+	}
 
 	const FVector TraceEnd = ViewLocation + ViewRotation.Vector() * Range;
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(CWSWeaponTrace), true, OwningPawn);
@@ -75,6 +80,10 @@ bool UCWSHitscanWeaponComponent::TryFire()
 
 	if (bHit && IsValid(Hit.GetActor()))
 	{
+		if (PlayCWSCombatSound(this, Hit.ImpactPoint, ECWSCombatSoundType::BulletImpact, 0.7f))
+		{
+			++ImpactSoundPlayCount;
+		}
 		if (ImpactEffect)
 		{
 			UNiagaraFunctionLibrary::SpawnSystemAtLocation(

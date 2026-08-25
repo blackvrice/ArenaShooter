@@ -57,6 +57,8 @@ private:
 	void FinishHudScreenshotTest();
 	void RunCombatFeedbackScreenshotStep();
 	void FinishCombatFeedbackScreenshotTest();
+	void RunAttackFeedbackScreenshotStep();
+	void FinishAttackFeedbackScreenshotTest();
 	void SpawnRoundClearSupply(int32 RoundNumber);
 	void FinishSmokeTest(bool bSucceeded, const TCHAR* Reason);
 
@@ -76,6 +78,7 @@ private:
 	TWeakObjectPtr<UCWSHealthComponent> PlayerHealth;
 	TWeakObjectPtr<ACWSEnemyBase> SmokeWeaponTarget;
 	TWeakObjectPtr<ACWSEnemyBase> CombatFeedbackScreenshotTarget;
+	TWeakObjectPtr<ACWSEnemyBase> AttackFeedbackScreenshotTarget;
 	TWeakObjectPtr<ACWSSupplyPickup> LastRoundSupply;
 	TMap<TWeakObjectPtr<ACWSEnemyBase>, FVector> SmokeEnemyStartLocations;
 	FTimerHandle GameplayBindTimer;
@@ -84,13 +87,18 @@ private:
 	FTimerHandle HudScreenshotExitTimer;
 	FTimerHandle CombatFeedbackScreenshotTimer;
 	FTimerHandle CombatFeedbackScreenshotExitTimer;
+	FTimerHandle AttackFeedbackScreenshotTimer;
+	FTimerHandle AttackFeedbackScreenshotExitTimer;
 	float SmokeStartTime = 0.0f;
 	float HudScreenshotStartTime = 0.0f;
 	float CombatFeedbackScreenshotStartTime = 0.0f;
+	float AttackFeedbackScreenshotStartTime = 0.0f;
 	FString HudScreenshotPath;
 	FString CombatFeedbackScreenshotPath;
+	FString AttackFeedbackScreenshotPath;
 	int32 SmokeHighestRoundCleared = 0;
 	int32 CombatFeedbackCaptureDelaySteps = 0;
+	int32 AttackFeedbackCaptureDelaySteps = 0;
 	int32 SmokeAmmoBeforeReload = 0;
 	int32 SmokeReserveBeforeReload = 0;
 	bool bGameOver = false;
@@ -119,11 +127,17 @@ private:
 	bool bSmokeWeaponTargetSpawned = false;
 	bool bSmokeWeaponAimPrimed = false;
 	bool bSmokeSawWeaponDamage = false;
+	bool bSmokeSawFireSound = false;
+	bool bSmokeSawImpactSound = false;
 	bool bSmokeWeaponTargetKilled = false;
 	bool bSmokeSawHitReaction = false;
 	bool bSmokeSawImpactEffect = false;
 	bool bSmokeSawDeathAnimation = false;
 	bool bSmokeSawDeathEffect = false;
+	bool bSmokeSawEnemyAttackDamage = false;
+	bool bSmokeSawEnemyAttackAnimation = false;
+	bool bSmokeSawEnemyAttackSound = false;
+	bool bSmokeSawBossExplosionSound = false;
 	bool bSmokeReloadStarted = false;
 	bool bSmokeReloadCompleted = false;
 	bool bSmokeAmmoSupplyCollected = false;
@@ -143,4 +157,9 @@ private:
 	bool bCombatFeedbackCaptureShotFired = false;
 	bool bCombatFeedbackScreenshotRequested = false;
 	bool bCombatFeedbackVerified = false;
+	bool bAttackFeedbackScreenshotTest = false;
+	bool bAttackFeedbackArenaPrepared = false;
+	bool bAttackFeedbackTriggered = false;
+	bool bAttackFeedbackScreenshotRequested = false;
+	bool bAttackFeedbackVerified = false;
 };
