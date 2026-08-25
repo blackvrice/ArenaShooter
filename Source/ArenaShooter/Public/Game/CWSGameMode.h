@@ -10,6 +10,7 @@ class ACWSBossEnemy;
 class ACWSWaveManager;
 class ACWSPlayerCharacter;
 class ACWSSupplyPickup;
+class ACWSArenaVisualDirector;
 class UCWSHealthComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCWSGameFlowEvent);
@@ -59,6 +60,8 @@ private:
 	void FinishCombatFeedbackScreenshotTest();
 	void RunAttackFeedbackScreenshotStep();
 	void FinishAttackFeedbackScreenshotTest();
+	void RunVisualPolishScreenshotStep();
+	void FinishVisualPolishScreenshotTest();
 	void SpawnRoundClearSupply(int32 RoundNumber);
 	void FinishSmokeTest(bool bSucceeded, const TCHAR* Reason);
 
@@ -80,6 +83,8 @@ private:
 	TWeakObjectPtr<ACWSEnemyBase> CombatFeedbackScreenshotTarget;
 	TWeakObjectPtr<ACWSEnemyBase> AttackFeedbackScreenshotTarget;
 	TWeakObjectPtr<ACWSSupplyPickup> LastRoundSupply;
+	TWeakObjectPtr<ACWSArenaVisualDirector> ArenaVisualDirector;
+	TArray<TWeakObjectPtr<ACWSEnemyBase>> VisualPolishScreenshotTargets;
 	TMap<TWeakObjectPtr<ACWSEnemyBase>, FVector> SmokeEnemyStartLocations;
 	FTimerHandle GameplayBindTimer;
 	FTimerHandle SmokeStepTimer;
@@ -89,16 +94,21 @@ private:
 	FTimerHandle CombatFeedbackScreenshotExitTimer;
 	FTimerHandle AttackFeedbackScreenshotTimer;
 	FTimerHandle AttackFeedbackScreenshotExitTimer;
+	FTimerHandle VisualPolishScreenshotTimer;
+	FTimerHandle VisualPolishScreenshotExitTimer;
 	float SmokeStartTime = 0.0f;
 	float HudScreenshotStartTime = 0.0f;
 	float CombatFeedbackScreenshotStartTime = 0.0f;
 	float AttackFeedbackScreenshotStartTime = 0.0f;
+	float VisualPolishScreenshotStartTime = 0.0f;
 	FString HudScreenshotPath;
 	FString CombatFeedbackScreenshotPath;
 	FString AttackFeedbackScreenshotPath;
+	FString VisualPolishScreenshotPath;
 	int32 SmokeHighestRoundCleared = 0;
 	int32 CombatFeedbackCaptureDelaySteps = 0;
 	int32 AttackFeedbackCaptureDelaySteps = 0;
+	int32 VisualPolishCaptureDelaySteps = 0;
 	int32 SmokeAmmoBeforeReload = 0;
 	int32 SmokeReserveBeforeReload = 0;
 	bool bGameOver = false;
@@ -118,6 +128,12 @@ private:
 	bool bSmokeSawFastStats = false;
 	bool bSmokeSawTankEnemy = false;
 	bool bSmokeSawTankStats = false;
+	bool bSmokeSawArenaVisuals = false;
+	bool bSmokeSawNormalPresentation = false;
+	bool bSmokeSawFastPresentation = false;
+	bool bSmokeSawTankPresentation = false;
+	bool bSmokeLoggedArenaPresentation = false;
+	bool bSmokeLoggedEnemyPresentation = false;
 	bool bSmokeLoggedEnemyArchetypes = false;
 	bool bSmokeSawPreparingPhase = false;
 	bool bSmokeSawActivePhase = false;
@@ -162,4 +178,8 @@ private:
 	bool bAttackFeedbackTriggered = false;
 	bool bAttackFeedbackScreenshotRequested = false;
 	bool bAttackFeedbackVerified = false;
+	bool bVisualPolishScreenshotTest = false;
+	bool bVisualPolishArenaPrepared = false;
+	bool bVisualPolishScreenshotRequested = false;
+	bool bVisualPolishVerified = false;
 };

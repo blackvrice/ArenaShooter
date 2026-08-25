@@ -8,6 +8,8 @@
 class UCWSHealthComponent;
 class UAnimSequenceBase;
 class UNiagaraSystem;
+class UPointLightComponent;
+class UStaticMeshComponent;
 
 UCLASS(Blueprintable)
 class ARENASHOOTER_API ACWSEnemyBase : public ACharacter
@@ -61,6 +63,15 @@ public:
 
 	bool StageAttackPoseForCapture(float NormalizedTime);
 
+	UFUNCTION(BlueprintPure, Category = "Enemy|Presentation")
+	FLinearColor GetArchetypeColor() const;
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|Presentation")
+	FString GetArchetypeLabel() const;
+
+	UFUNCTION(BlueprintPure, Category = "Enemy|Presentation")
+	bool HasArchetypePresentation() const { return bArchetypePresentationReady; }
+
 protected:
 	UFUNCTION()
 	void HandleHealthChanged(
@@ -99,6 +110,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
 	TObjectPtr<UNiagaraSystem> DeathEffect;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Presentation")
+	TObjectPtr<UStaticMeshComponent> ArchetypeMarker;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Presentation")
+	TObjectPtr<UStaticMeshComponent> ArchetypeBand;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Presentation")
+	TObjectPtr<UPointLightComponent> ArchetypeLight;
+
 	bool PlayAttackAnimation();
 
 private:
@@ -114,5 +134,6 @@ private:
 	int32 DeathEffectSpawnCount = 0;
 	bool bHitReactionActive = false;
 	bool bDeathAnimationPlayed = false;
+	bool bArchetypePresentationReady = false;
 	FTimerHandle HitReactionTimerHandle;
 };

@@ -2,6 +2,7 @@
 
 #include "Components/CWSHealthComponent.h"
 #include "Components/CWSHitscanWeaponComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimSingleNodeInstance.h"
 #include "Enemy/CWSBossEnemy.h"
@@ -22,6 +23,7 @@
 #include "UI/CWSHUD.h"
 #include "UnrealClient.h"
 #include "Wave/CWSWaveManager.h"
+#include "World/CWSArenaVisualDirector.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCWSGame, Log, All);
 
@@ -91,6 +93,20 @@ void ACWSGameMode::BeginPlay()
 		UE_LOG(LogCWSGame, Display, TEXT("CWS_ATTACK_FEEDBACK_SCREENSHOT_STARTED"));
 	}
 
+	bVisualPolishScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSVisualPolishScreenshotTest"));
+	if (bVisualPolishScreenshotTest)
+	{
+		VisualPolishScreenshotStartTime = GetWorld()->GetTimeSeconds();
+		GetWorldTimerManager().SetTimer(
+			VisualPolishScreenshotTimer,
+			this,
+			&ACWSGameMode::RunVisualPolishScreenshotStep,
+			0.05f,
+			true,
+			0.1f);
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_VISUAL_POLISH_SCREENSHOT_STARTED"));
+	}
+
 	bSmokeTestAllRounds = FParse::Param(FCommandLine::Get(), TEXT("CWSAllRoundsSmokeTest"));
 	bSmokeTestEnabled = bSmokeTestAllRounds || FParse::Param(FCommandLine::Get(), TEXT("CWSRoundOneSmokeTest"));
 	if (!bSmokeTestEnabled)
@@ -144,6 +160,27 @@ void ACWSGameMode::BindGameplayActors()
 		}
 	}
 
+	if (!ArenaVisualDirector.IsValid())
+	{
+		for (TActorIterator<ACWSArenaVisualDirector> It(GetWorld()); It; ++It)
+		{
+			ArenaVisualDirector = *It;
+			break;
+		}
+		if (!ArenaVisualDirector.IsValid())
+		{
+			if (ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(this, 0)))
+			{
+				const float FloorHeight = PlayerCharacter->GetActorLocation().Z -
+					PlayerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+				ArenaVisualDirector = GetWorld()->SpawnActor<ACWSArenaVisualDirector>(
+					ACWSArenaVisualDirector::StaticClass(),
+					FVector(0.0f, 0.0f, FloorHeight),
+					FRotator::ZeroRotator);
+			}
+		}
+	}
+
 	if (bSmokeTestAllRounds)
 	{
 		ConfigureAllRoundsSmokeTimings();
@@ -163,6 +200,22 @@ void ACWSGameMode::RunHudScreenshotStep()
 	}
 
 	BindGameplayActors();
+	if (ArenaVisualDirector.IsValid())
+	{
+		bSmokeSawArenaVisuals =
+			ArenaVisualDirector->IsPresentationReady() &&
+			ArenaVisualDirector->GetCenterRingSegmentCount() == 24 &&
+			ArenaVisualDirector->GetCoverCount() == 8 &&
+			ArenaVisualDirector->GetGateBeaconCount() == 8;
+		if (bSmokeSawArenaVisuals && !bSmokeLoggedArenaPresentation)
+		{
+			bSmokeLoggedArenaPresentation = true;
+			UE_LOG(
+				LogCWSGame,
+				Display,
+				TEXT("CWS_ARENA_PRESENTATION_VERIFIED: 24 ring segments, 8 blocking covers, and 8 gate beacons"));
+		}
+	}
 	if (!WaveManager.IsValid() || WaveManager->GetWavePhase() != ECWSWavePhase::Preparing ||
 		WaveManager->GetCurrentRound() != 1)
 	{
@@ -535,6 +588,143 @@ void ACWSGameMode::FinishAttackFeedbackScreenshotTest()
 		bSucceeded ? TEXT("CWS attack feedback screenshot captured") : TEXT("CWS attack feedback screenshot failed"));
 }
 
+void ACWSGameMode::RunVisualPolishScreenshotStep()
+{
+	if (!bVisualPolishScreenshotTest || bVisualPolishScreenshotRequested || !GetWorld())
+	{
+		return;
+	}
+	if (GetWorld()->GetTimeSeconds() - VisualPolishScreenshotStartTime > 12.0f)
+	{
+		UE_LOG(LogCWSGame, Error, TEXT("CWS_VISUAL_POLISH_SCREENSHOT_FAILURE: presentation state was not reached"));
+		FPlatformMisc::RequestExitWithStatus(true, 12, TEXT("CWS visual polish screenshot test timed out"));
+		return;
+	}
+
+	BindGameplayActors();
+	ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	APlayerController* PlayerController = PlayerCharacter ? Cast<APlayerController>(PlayerCharacter->GetController()) : nullptr;
+	if (!PlayerCharacter || !PlayerController || !WaveManager.IsValid() || !ArenaVisualDirector.IsValid())
+	{
+		return;
+	}
+	if (!bVisualPolishArenaPrepared)
+	{
+		if (WaveManager->GetWavePhase() != ECWSWavePhase::Preparing)
+		{
+			return;
+		}
+		WaveManager->StopWaveSystem();
+		PlayerCharacter->GetMesh()->SetVisibility(false, true);
+		bVisualPolishArenaPrepared = true;
+		return;
+	}
+
+	if (VisualPolishScreenshotTargets.Num() == 0)
+	{
+		const FVector Forward = PlayerCharacter->GetActorForwardVector().GetSafeNormal2D();
+		const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
+		const TArray<UClass*> EnemyClasses = {
+			ACWSEnemyBase::StaticClass(),
+			ACWSFastEnemy::StaticClass(),
+			ACWSTankEnemy::StaticClass()
+		};
+		for (int32 Index = 0; Index < EnemyClasses.Num(); ++Index)
+		{
+			const float SideOffset = static_cast<float>(Index - 1) * 340.0f;
+			const FVector SpawnLocation = PlayerCharacter->GetActorLocation() + Forward * 380.0f + Right * SideOffset;
+			FActorSpawnParameters SpawnParameters;
+			SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			ACWSEnemyBase* Target = GetWorld()->SpawnActor<ACWSEnemyBase>(
+				EnemyClasses[Index],
+				SpawnLocation,
+				(-Forward).Rotation(),
+				SpawnParameters);
+			if (!Target)
+			{
+				return;
+			}
+			Target->GetCharacterMovement()->DisableMovement();
+			Target->DetachFromControllerPendingDestroy();
+			VisualPolishScreenshotTargets.Add(Target);
+		}
+		return;
+	}
+
+	if (VisualPolishScreenshotTargets.Num() != 3 ||
+		!VisualPolishScreenshotTargets[0].IsValid() ||
+		!VisualPolishScreenshotTargets[1].IsValid() ||
+		!VisualPolishScreenshotTargets[2].IsValid())
+	{
+		return;
+	}
+	ACWSEnemyBase* NormalEnemy = VisualPolishScreenshotTargets[0].Get();
+	ACWSEnemyBase* FastEnemy = VisualPolishScreenshotTargets[1].Get();
+	ACWSEnemyBase* TankEnemy = VisualPolishScreenshotTargets[2].Get();
+	bVisualPolishVerified =
+		ArenaVisualDirector->IsPresentationReady() && ArenaVisualDirector->HasBlockingCover() &&
+		ArenaVisualDirector->GetCenterRingSegmentCount() == 24 && ArenaVisualDirector->GetCoverCount() == 8 &&
+		NormalEnemy->HasArchetypePresentation() && FastEnemy->HasArchetypePresentation() &&
+		TankEnemy->HasArchetypePresentation() &&
+		!NormalEnemy->GetArchetypeColor().Equals(FastEnemy->GetArchetypeColor()) &&
+		!FastEnemy->GetArchetypeColor().Equals(TankEnemy->GetArchetypeColor()) &&
+		!NormalEnemy->GetArchetypeColor().Equals(TankEnemy->GetArchetypeColor());
+	if (!bVisualPolishVerified)
+	{
+		UE_LOG(LogCWSGame, Error, TEXT("CWS_VISUAL_POLISH_SCREENSHOT_FAILURE: visual presentation validation failed"));
+		FPlatformMisc::RequestExitWithStatus(true, 13, TEXT("CWS visual polish validation failed"));
+		return;
+	}
+
+	FVector ViewLocation;
+	FRotator ViewRotation;
+	PlayerController->GetPlayerViewPoint(ViewLocation, ViewRotation);
+	const FVector GroupCenter = FastEnemy->GetActorLocation() + FVector(0.0f, 0.0f, 95.0f);
+	PlayerController->SetControlRotation((GroupCenter - ViewLocation).Rotation());
+	if (++VisualPolishCaptureDelaySteps < 8)
+	{
+		return;
+	}
+
+	bVisualPolishScreenshotRequested = true;
+	GetWorldTimerManager().ClearTimer(VisualPolishScreenshotTimer);
+	const FString ScreenshotDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots"));
+	IFileManager::Get().MakeDirectory(*ScreenshotDirectory, true);
+	VisualPolishScreenshotPath = FPaths::Combine(ScreenshotDirectory, TEXT("CWSArenaVisualPolish.png"));
+	IFileManager::Get().Delete(*VisualPolishScreenshotPath, false, true);
+	FScreenshotRequest::RequestScreenshot(VisualPolishScreenshotPath, true, false);
+	UE_LOG(
+		LogCWSGame,
+		Display,
+		TEXT("CWS_VISUAL_POLISH_VERIFIED: arena ring, 8 blocking covers, gate beacons, and Normal/Fast/Tank colors"));
+	GetWorldTimerManager().SetTimer(
+		VisualPolishScreenshotExitTimer,
+		this,
+		&ACWSGameMode::FinishVisualPolishScreenshotTest,
+		1.0f,
+		false);
+}
+
+void ACWSGameMode::FinishVisualPolishScreenshotTest()
+{
+	const int64 ScreenshotSize = IFileManager::Get().FileSize(*VisualPolishScreenshotPath);
+	const bool bSucceeded = bVisualPolishVerified && ScreenshotSize > 0;
+	if (bSucceeded)
+	{
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_VISUAL_POLISH_SCREENSHOT_SUCCESS: %s Size=%lld"),
+			*VisualPolishScreenshotPath, ScreenshotSize);
+	}
+	else
+	{
+		UE_LOG(LogCWSGame, Error, TEXT("CWS_VISUAL_POLISH_SCREENSHOT_FAILURE: %s Size=%lld"),
+			*VisualPolishScreenshotPath, ScreenshotSize);
+	}
+	FPlatformMisc::RequestExitWithStatus(
+		true,
+		bSucceeded ? 0 : 14,
+		bSucceeded ? TEXT("CWS visual polish screenshot captured") : TEXT("CWS visual polish screenshot failed"));
+}
+
 void ACWSGameMode::ConfigureAllRoundsSmokeTimings()
 {
 	if (bSmokeTimingsConfigured || !WaveManager.IsValid())
@@ -753,6 +943,22 @@ void ACWSGameMode::RunCombatSmokeStep()
 	}
 
 	BindGameplayActors();
+	if (ArenaVisualDirector.IsValid())
+	{
+		bSmokeSawArenaVisuals =
+			ArenaVisualDirector->IsPresentationReady() &&
+			ArenaVisualDirector->GetCenterRingSegmentCount() == 24 &&
+			ArenaVisualDirector->GetCoverCount() == 8 &&
+			ArenaVisualDirector->GetGateBeaconCount() == 8;
+		if (bSmokeSawArenaVisuals && !bSmokeLoggedArenaPresentation)
+		{
+			bSmokeLoggedArenaPresentation = true;
+			UE_LOG(
+				LogCWSGame,
+				Display,
+				TEXT("CWS_ARENA_PRESENTATION_VERIFIED: 24 ring segments, 8 blocking covers, and 8 gate beacons"));
+		}
+	}
 	if (WaveManager.IsValid())
 	{
 		HandleWavePhaseChanged(WaveManager->GetWavePhase(), WaveManager->GetCurrentRound());
@@ -795,6 +1001,12 @@ void ACWSGameMode::RunCombatSmokeStep()
 		{
 			continue;
 		}
+		if (Enemy->GetEnemyType() == ECWSEnemyType::Normal)
+		{
+			bSmokeSawNormalPresentation = bSmokeSawNormalPresentation ||
+				(Enemy->HasArchetypePresentation() &&
+				Enemy->GetArchetypeColor().Equals(FLinearColor(0.05f, 0.95f, 0.35f)));
+		}
 
 		if (bSmokeTestAllRounds)
 		{
@@ -806,6 +1018,8 @@ void ACWSGameMode::RunCombatSmokeStep()
 					FMath::IsNearlyEqual(FastEnemy->GetMoveSpeed(), 520.0f) &&
 					FMath::IsNearlyEqual(FastEnemy->GetAttackDamage(), 8.0f) &&
 					FMath::IsNearlyEqual(FastEnemy->GetAttackInterval(), 0.65f);
+				bSmokeSawFastPresentation = FastEnemy->HasArchetypePresentation() &&
+					FastEnemy->GetArchetypeColor().Equals(FLinearColor(1.0f, 0.24f, 0.03f));
 			}
 			else if (ACWSTankEnemy* TankEnemy = Cast<ACWSTankEnemy>(Enemy))
 			{
@@ -815,6 +1029,8 @@ void ACWSGameMode::RunCombatSmokeStep()
 					FMath::IsNearlyEqual(TankEnemy->GetMoveSpeed(), 230.0f) &&
 					FMath::IsNearlyEqual(TankEnemy->GetAttackDamage(), 18.0f) &&
 					FMath::IsNearlyEqual(TankEnemy->GetAttackInterval(), 1.4f);
+				bSmokeSawTankPresentation = TankEnemy->HasArchetypePresentation() &&
+					TankEnemy->GetArchetypeColor().Equals(FLinearColor(0.05f, 0.35f, 1.0f));
 			}
 
 			if (!bSmokeLoggedEnemyArchetypes && bSmokeSawFastEnemy && bSmokeSawFastStats &&
@@ -932,6 +1148,22 @@ void ACWSGameMode::RunCombatSmokeStep()
 		}
 	}
 
+	const bool bRequiredEnemyPresentationReady = bSmokeTestAllRounds
+		? bSmokeSawNormalPresentation && bSmokeSawFastPresentation && bSmokeSawTankPresentation
+		: bSmokeSawNormalPresentation;
+	if (bRequiredEnemyPresentationReady && !bSmokeLoggedEnemyPresentation)
+	{
+		bSmokeLoggedEnemyPresentation = true;
+		if (bSmokeTestAllRounds)
+		{
+			UE_LOG(LogCWSGame, Display, TEXT("CWS_ENEMY_PRESENTATION_VERIFIED: Normal green, Fast orange, and Tank blue"));
+		}
+		else
+		{
+			UE_LOG(LogCWSGame, Display, TEXT("CWS_ENEMY_PRESENTATION_VERIFIED: Normal green"));
+		}
+	}
+
 	if (!bSmokeTestAllRounds && bSmokeRoundOneCleared && !bSmokeStoppedAfterRoundOne && WaveManager.IsValid())
 	{
 		bSmokeStoppedAfterRoundOne = true;
@@ -960,6 +1192,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 				bSmokeSawFireSound && bSmokeSawImpactSound && bSmokeSawHitReaction && bSmokeSawImpactEffect &&
 				bSmokeSawDeathAnimation && bSmokeSawDeathEffect && bSmokeSawEnemyAttackDamage &&
 				bSmokeSawEnemyAttackAnimation && bSmokeSawEnemyAttackSound &&
+				bSmokeSawArenaVisuals && bSmokeSawNormalPresentation &&
 				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected && CanRestart();
 			if (!bCombatFlowVerified)
 			{
@@ -983,12 +1216,14 @@ void ACWSGameMode::RunCombatSmokeStep()
 				bSmokeSawEnemyAttackAnimation && bSmokeSawEnemyAttackSound &&
 				bSmokeReloadCompleted && bSmokeAmmoSupplyCollected && bSmokeHealthSupplyCollected &&
 				bSmokeSawFastEnemy && bSmokeSawFastStats && bSmokeSawTankEnemy && bSmokeSawTankStats &&
+				bSmokeSawArenaVisuals && bSmokeSawNormalPresentation &&
+				bSmokeSawFastPresentation && bSmokeSawTankPresentation &&
 				bSmokeSawPreparingPhase && bSmokeSawActivePhase && bSmokeSawRoundClearedPhase && bSmokeSawCompletedPhase &&
 				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
 				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
 				bSmokeSawBossExplosionSound &&
 				SmokeHighestRoundCleared == 5 && bGameCleared,
-			TEXT("Combat sounds, enemy attack animation, timed reload, supplies, round announcement phases, Fast/Tank archetypes, boss explosion sound, and all five rounds were verified"));
+			TEXT("Arena presentation, enemy type colors, combat feedback, reload, supplies, round phases, archetypes, boss patterns, and all five rounds were verified"));
 		return;
 	}
 

@@ -146,6 +146,8 @@ GameMode BeginPlay
 
 `UCWSHitscanWeaponComponent`는 발사 위치에서 총성을 재생하고 Visibility 라인트레이스 충돌 지점에 충돌음과 `NS_Damage` Niagara를 생성한 뒤 포인트 데미지를 적용한다. `UCWSCombatSoundWave`가 44.1 kHz mono PCM을 런타임에 합성하므로 외부 오디오 에셋 없이 Editor와 Shipping에서 동일한 발사/충돌/근접/폭발 음향 경로를 사용한다. `-nullrhi -nosound` 스모크에서는 PCM 큐와 이펙트 생성 경로 실행을 카운터로 검사하고, 실제 XAudio2 장치와 렌더링 결과는 별도 오프스크린 캡처로 확인한다.
 
+`ACWSArenaVisualDirector`는 저장된 World Partition 맵 액터를 수정하지 않고 런타임에 중앙 링 24조각, 충돌과 내비게이션을 반영하는 엄폐물 8개, 동서남북 게이트 비콘 8개를 생성한다. `ACWSEnemyBase`는 타입별 머리 위 마커와 발밑 밴드를 함께 생성하며 Normal은 초록, Fast는 주황, Tank는 파랑, Boss는 보라로 구분한다. 이 레이어는 네이티브 코드에서 생성되므로 Editor와 Shipping이 같은 배치를 사용한다.
+
 ## 9. 전투 흐름 런타임 검증
 
 - `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
@@ -155,6 +157,7 @@ GameMode BeginPlay
 - `run_hud_screenshot.ps1`: Round 1 `Preparing` 상태를 1280×720 오프스크린으로 렌더링해 중앙 카운트다운 HUD 스크린샷 생성 검사
 - `run_combat_feedback_screenshot.ps1`: 오프스크린 게임 월드에서 피격 애니메이션과 Niagara를 예열한 뒤 사망 포즈와 사망 Niagara가 함께 보이는 1280×720 스크린샷 생성 검사
 - `run_attack_feedback_screenshot.ps1`: 실제 오디오 장치를 초기화한 오프스크린 게임 월드에서 일반 적의 피해·공격 몽타주·공격음을 검사하고 `MM_Attack_01` 공격 자세가 보이는 1280×720 스크린샷 생성 검사
+- `run_visual_polish_screenshot.ps1`: 중앙 링·엄폐물·방향 비콘과 Normal/Fast/Tank 타입 색상을 검사하고 세 타입이 함께 보이는 1280×720 스크린샷 생성 검사
 - 전체 라운드 검증은 전용 Boss 클래스, 체력 1200, 최종 페이즈 전환, Ground Slam과 Shockwave 피해/넉백 경로도 함께 검사한다.
 - Warm DDC 직렬화 오류가 감지되면 스모크 러너가 격리된 Cold DDC로 한 번 자동 재시도한다.
 - `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사

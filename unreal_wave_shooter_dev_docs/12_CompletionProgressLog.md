@@ -34,3 +34,34 @@
 ### 다음 순서
 
 2단계: 맵 디테일링과 Normal/Fast/Tank 시각 구분.
+
+## 2026-08-25 - 2단계: 맵 디테일링과 적 타입 시각 구분
+
+상태: 완료
+
+### 분석
+
+- 저장된 맵은 넓은 전투 공간을 갖췄지만 중앙 교전 지점, 일반 엄폐물, 방향 표식이 부족했다.
+- Normal/Fast/Tank는 크기와 능력치가 달라도 전투 중 즉시 읽을 수 있는 타입 표식이 없었다.
+- World Partition 외부 액터에 사용자 변경이 있어 맵 에셋을 재저장하지 않는 구현 경로가 필요했다.
+
+### 구현
+
+- `ACWSArenaVisualDirector`가 중앙 링 24조각, 실제 충돌·내비게이션 엄폐물 8개, 동서남북 게이트 비콘 8개를 런타임에 생성하도록 했다.
+- Normal은 초록, Fast는 주황, Tank는 파랑, Boss는 보라 마커와 발밑 밴드를 사용하도록 했다.
+- Round 1과 전체 라운드 스모크 성공 조건에 아레나 구성 수량과 타입별 표시 색상을 추가했다.
+- `run_visual_polish_screenshot.ps1`를 추가해 세 일반 타입과 아레나 레이어를 한 화면에서 검사한다.
+- 저장된 `Lvl_Combat`와 사용자 소유 외부 액터는 수정하거나 커밋 대상에 포함하지 않았다.
+
+### 검증
+
+- `ArenaShooterEditor Win64 Development` 빌드 성공.
+- Round 1: 아레나 구성, Normal 초록 표시, 전투·재시작 흐름과 `CWS_ROUND_ONE_SMOKE_SUCCESS` 확인.
+- Round 1~5: Normal/Fast/Tank 표시와 기존 전체 전투 흐름, `CWS_ALL_ROUNDS_SMOKE_SUCCESS` 확인.
+- 렌더링 실행: `CWS_VISUAL_POLISH_VERIFIED`와 `CWS_VISUAL_POLISH_SCREENSHOT_SUCCESS` 확인.
+- 시각 QA: `CWSArenaVisualPolish.png` 1280×720, 1,047,028 bytes에서 초록 Normal, 주황 Fast, 파랑 Tank, 엄폐물, 중앙 링 일부와 방향 비콘을 직접 확인.
+- 첫 캡처에서 엄폐물 뒤에 가려진 Normal을 발견해 타입 간격과 카메라 전방 거리를 조정한 뒤 재검증했다.
+
+### 다음 순서
+
+3단계: Round 1~5 탄약 경제, 적 체력과 교전 압력 밸런싱.
