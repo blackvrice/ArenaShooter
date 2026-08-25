@@ -16,7 +16,7 @@ if ($openEditor) {
     throw "ArenaShooter is open in Unreal Editor. Close the editor before running the combat feedback screenshot test."
 }
 
-function Invoke-CombatFeedbackScreenshotTest {
+function Invoke-CombatFeedbackScreenshotTest([string]$DdcGraph) {
     if (Test-Path -LiteralPath $logFile) {
         Remove-Item -LiteralPath $logFile
     }
@@ -31,9 +31,10 @@ function Invoke-CombatFeedbackScreenshotTest {
         -ResX=1280 `
         -ResY=720 `
         -unattended `
+        -NoLoadStartupPackages `
         -nosound `
         -nop4 `
-        -DDC=Warm `
+        "-DDC=$DdcGraph" `
         "-ExecCmds=DisableAllScreenMessages" `
         -CWSCombatFeedbackScreenshotTest `
         "-abslog=$logFile" `
@@ -48,12 +49,17 @@ function Invoke-CombatFeedbackScreenshotTest {
     }
 }
 
-Invoke-CombatFeedbackScreenshotTest
-$hasKnownCacheFailure = $logText -match
-    "ShaderCompilingThread crashed|String index out of bounds|FLargeMemoryReader|BufferReader.h|OodleLZ_Decompress failed"
+foreach ($warmAttempt in 1..3) {
+    Invoke-CombatFeedbackScreenshotTest "Warm"
+    if ($logText.Contains($successMarker)) { break }
+    $hasKnownCacheFailure = $logText -match
+        "ShaderCompilingThread crashed|String index out of bounds|FLargeMemoryReader|BufferReader.h|OodleLZ_Decompress failed"
+    if (-not $hasKnownCacheFailure -or $warmAttempt -eq 3) { break }
+    Write-Warning "Warm DDC failed on screenshot attempt $warmAttempt. Retrying while retaining completed derived data."
+}
 if (-not $logText.Contains($successMarker) -and $hasKnownCacheFailure) {
-    Write-Warning "Shader or derived-data cache initialization failed. Retrying the combat feedback screenshot once."
-    Invoke-CombatFeedbackScreenshotTest
+    Write-Warning "Shader or derived-data cache initialization failed. Retrying once with an isolated Cold DDC."
+    Invoke-CombatFeedbackScreenshotTest "Cold"
 }
 
 if ($editorExitCode -ne 0) {

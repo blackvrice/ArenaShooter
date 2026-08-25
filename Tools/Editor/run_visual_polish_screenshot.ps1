@@ -11,7 +11,7 @@ $openEditor = Get-CimInstance Win32_Process |
     Where-Object { $_.Name -eq "UnrealEditor.exe" -and $_.CommandLine -like "*ArenaShooter.uproject*" }
 if ($openEditor) { throw "ArenaShooter is open in Unreal Editor. Close it before running visual QA." }
 
-function Invoke-VisualPolishScreenshot {
+function Invoke-VisualPolishScreenshot([string]$DdcGraph) {
     if (Test-Path -LiteralPath $logFile) { Remove-Item -LiteralPath $logFile }
     if (Test-Path -LiteralPath $screenshotFile) { Remove-Item -LiteralPath $screenshotFile }
     & $editorCmd $projectFile `
@@ -21,9 +21,10 @@ function Invoke-VisualPolishScreenshot {
         -ResX=1280 `
         -ResY=720 `
         -unattended `
+        -NoLoadStartupPackages `
         -nosound `
         -nop4 `
-        -DDC=Warm `
+        "-DDC=$DdcGraph" `
         "-ExecCmds=DisableAllScreenMessages" `
         -CWSVisualPolishScreenshotTest `
         "-abslog=$logFile" `
@@ -33,12 +34,17 @@ function Invoke-VisualPolishScreenshot {
     $script:logText = if (Test-Path -LiteralPath $logFile) { Get-Content -LiteralPath $logFile -Raw } else { "" }
 }
 
-Invoke-VisualPolishScreenshot
-$hasKnownCacheFailure = $logText -match
-    "ShaderCompilingThread crashed|String index out of bounds|FLargeMemoryReader|BufferReader.h|OodleLZ_Decompress failed"
+foreach ($warmAttempt in 1..3) {
+    Invoke-VisualPolishScreenshot "Warm"
+    if ($logText.Contains($successMarker)) { break }
+    $hasKnownCacheFailure = $logText -match
+        "ShaderCompilingThread crashed|String index out of bounds|FLargeMemoryReader|BufferReader.h|OodleLZ_Decompress failed"
+    if (-not $hasKnownCacheFailure -or $warmAttempt -eq 3) { break }
+    Write-Warning "Warm DDC failed on screenshot attempt $warmAttempt. Retrying while retaining completed derived data."
+}
 if (-not $logText.Contains($successMarker) -and $hasKnownCacheFailure) {
-    Write-Warning "Shader or derived-data cache initialization failed. Retrying visual QA once."
-    Invoke-VisualPolishScreenshot
+    Write-Warning "Shader or derived-data cache initialization failed. Retrying once with an isolated Cold DDC."
+    Invoke-VisualPolishScreenshot "Cold"
 }
 
 if ($editorExitCode -ne 0) { throw "Visual polish screenshot failed with Unreal exit code $editorExitCode." }

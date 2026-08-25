@@ -16,7 +16,7 @@ if ($openEditor) {
     throw "ArenaShooter is open in Unreal Editor. Close the editor before running the HUD screenshot test."
 }
 
-function Invoke-HudScreenshotTest {
+function Invoke-HudScreenshotTest([string]$DdcGraph) {
     if (Test-Path -LiteralPath $logFile) {
         Remove-Item -LiteralPath $logFile
     }
@@ -31,9 +31,10 @@ function Invoke-HudScreenshotTest {
         -ResX=1280 `
         -ResY=720 `
         -unattended `
+        -NoLoadStartupPackages `
         -nosound `
         -nop4 `
-        -DDC=Warm `
+        "-DDC=$DdcGraph" `
         "-ExecCmds=DisableAllScreenMessages" `
         -CWSHUDScreenshotTest `
         "-abslog=$logFile" `
@@ -48,12 +49,17 @@ function Invoke-HudScreenshotTest {
     }
 }
 
-Invoke-HudScreenshotTest
-$hasKnownCacheFailure = $logText -match
-    "ShaderCompilingThread crashed|String index out of bounds|FLargeMemoryReader|BufferReader.h|OodleLZ_Decompress failed"
+foreach ($warmAttempt in 1..3) {
+    Invoke-HudScreenshotTest "Warm"
+    if ($logText.Contains($successMarker)) { break }
+    $hasKnownCacheFailure = $logText -match
+        "ShaderCompilingThread crashed|String index out of bounds|FLargeMemoryReader|BufferReader.h|OodleLZ_Decompress failed"
+    if (-not $hasKnownCacheFailure -or $warmAttempt -eq 3) { break }
+    Write-Warning "Warm DDC failed on screenshot attempt $warmAttempt. Retrying while retaining completed derived data."
+}
 if (-not $logText.Contains($successMarker) -and $hasKnownCacheFailure) {
-    Write-Warning "Shader or derived-data cache initialization failed. Retrying the HUD screenshot once."
-    Invoke-HudScreenshotTest
+    Write-Warning "Shader or derived-data cache initialization failed. Retrying once with an isolated Cold DDC."
+    Invoke-HudScreenshotTest "Cold"
 }
 
 if ($editorExitCode -ne 0) {

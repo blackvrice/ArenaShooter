@@ -26,19 +26,23 @@ try {
         Remove-Item Env:ARENA_WAVE_SPAWN_MODE -ErrorAction SilentlyContinue
     }
 
-    & $editorCmd $projectFile `
-        -run=pythonscript `
-        "-script=$scriptFile" `
-        -unattended `
-        -nop4 `
-        -nosplash `
-        -DDC=Warm `
-        -EnablePlugins=PythonScriptPlugin `
-        -stdout `
-        -FullStdOutLogOutput
+    $pythonSucceeded = $false
+    $pythonFailed = $false
+    foreach ($attempt in 1..3) {
+        & $editorCmd $projectFile `
+            -run=pythonscript `
+            "-script=$scriptFile" `
+            -unattended `
+            -nop4 `
+            -nosplash `
+            -NoLoadStartupPackages `
+            -nothreading `
+            -DDC=Warm `
+            -EnablePlugins=PythonScriptPlugin `
+            -stdout `
+            -FullStdOutLogOutput
 
-    $commandletExitCode = $LASTEXITCODE
-    if ($commandletExitCode -ne 0) {
+        $commandletExitCode = $LASTEXITCODE
         $logFile = Join-Path $projectRoot "Saved\Logs\ArenaShooter.log"
         $logText = if (Test-Path -LiteralPath $logFile) {
             Get-Content -LiteralPath $logFile -Raw
@@ -48,9 +52,19 @@ try {
         $expectedMarker = if ($InspectOnly) { "WAVE_SPAWN_SYSTEM_INSPECT=" } else { "CWS wave spawn system rebuilt" }
         $pythonSucceeded = $logText -match "Python script executed successfully" -and $logText.Contains($expectedMarker)
         $pythonFailed = $logText -match "LogPython: Error|Python script executed with errors"
-        if (-not $pythonSucceeded -or $pythonFailed) {
-            throw "Wave spawn commandlet failed with exit code $commandletExitCode."
+        if ($pythonSucceeded -and -not $pythonFailed) {
+            break
         }
+        if ($attempt -lt 3 -and $logText -match "FLargeMemoryReader|BufferReader.h|OodleLZ_Decompress failed") {
+            Write-Warning "Warm DDC failed on attempt $attempt. Retrying while retaining completed derived data."
+            continue
+        }
+        break
+    }
+    if (-not $pythonSucceeded -or $pythonFailed) {
+        throw "Wave spawn commandlet failed with exit code $commandletExitCode."
+    }
+    if ($commandletExitCode -ne 0) {
         Write-Warning "Unreal returned exit code $commandletExitCode because of editor/source-control warnings, but the wave spawn script completed successfully."
     }
 } finally {

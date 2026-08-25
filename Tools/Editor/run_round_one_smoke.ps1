@@ -33,6 +33,7 @@ function Invoke-SmokeTest([string]$DdcGraph) {
         -game `
         -nullrhi `
         -unattended `
+        -ReduceThreadUsage `
         -nosound `
         -nop4 `
         "-DDC=$DdcGraph" `
@@ -53,8 +54,13 @@ Invoke-SmokeTest "Warm"
 $hasResultMarker = $logText.Contains($successMarker) -or $logText.Contains($failureMarker)
 $hasDdcSerializationFailure =
     $logText -match "FLargeMemoryReader|BufferReader.h|Copied 0 bytes when .* bytes were expected"
-if (-not $hasResultMarker -and $hasDdcSerializationFailure) {
-    Write-Warning "Warm DDC failed during asset deserialization. Retrying once with an isolated Cold DDC."
+if (-not $hasResultMarker) {
+    $retryReason = if ($hasDdcSerializationFailure) {
+        "Warm DDC failed during asset deserialization."
+    } else {
+        "The Warm DDC run exited without a result marker."
+    }
+    Write-Warning "$retryReason Retrying once with an isolated Cold DDC."
     Invoke-SmokeTest "Cold"
 }
 
