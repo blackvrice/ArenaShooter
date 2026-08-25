@@ -208,7 +208,7 @@ Normal은 `ACWSEnemyBase`, Fast는 `ACWSFastEnemy`, Tank는 `ACWSTankEnemy`, Rou
 
 ## 8. 권장 체력과 데미지
 
-아래 값은 현재 네이티브 클래스에 적용된 초기 밸런스다. 100 m 전장에서 실제 교전 거리가 길어질 수 있으므로 수동 플레이 테스트 후 이동속도와 추적 범위를 함께 조정한다.
+아래 값은 현재 네이티브 클래스에 적용된 밸런스다. 적 수와 능력치 조합은 유지하고, 실제 사격 완주 결과에 맞춰 탄약 경제를 조정했다.
 
 | 타입 | 체력 | 이동속도 | 공격 데미지 | 특징 |
 |---|---:|---:|---:|---|
@@ -217,6 +217,22 @@ Normal은 `ACWSEnemyBase`, Fast는 `ACWSFastEnemy`, Tank는 `ACWSTankEnemy`, Rou
 | Enemy_Fast | 35 | 520 | 8 | 빠른 접근 |
 | Enemy_Tank | 180 | 230 | 18 | 느리지만 단단함 |
 | Boss | 1200 | 260 | 25~35 | 패턴 공격 |
+
+### 탄약 경제 검증
+
+| 라운드 | Normal | Fast | Tank | Boss | 완벽 명중 필요 탄수 |
+|---|---:|---:|---:|---:|---:|
+| 1R | 8 | 0 | 0 | 0 | 24 |
+| 2R | 8 | 8 | 0 | 0 | 40 |
+| 3R | 8 | 8 | 8 | 0 | 104 |
+| 4R | 16 | 10 | 8 | 0 | 132 |
+| 5R | 4 | 6 | 4 | 1 | 104 |
+| 합계 | 44 | 32 | 20 | 1 | 404 |
+
+- 무기 데미지 25 기준 Normal 3발, Fast 2발, Tank 8발, Boss 48발이다.
+- 시작 탄약은 탄창 60 + 예비 360 = 420발이고 Round 1·3 탄약 보급은 각각 90발이다.
+- 총 예산 600발은 70% 명중률 필요량 578발보다 22발 많다.
+- 실제 히트스캔 자동 플레이 경로에서 97명, 404발, 빗나감 0, 종료 잔탄 196발을 확인했다.
 
 ## 9. 현재 맵 의도
 
@@ -236,6 +252,7 @@ Normal은 `ACWSEnemyBase`, Fast는 `ACWSFastEnemy`, Tank는 `ACWSTankEnemy`, Rou
 - PlayerStart, NavMesh Bounds, 네이티브 런타임 클래스 연결은 `Tools/Editor/run_build_playable_round_one.ps1`로 재생성하거나 검사한다.
 - Round 1 전투 흐름 검증은 `Tools/Editor/run_round_one_smoke.ps1`, 전체 라운드 검증은 같은 스크립트의 `-AllRounds` 옵션으로 실행한다.
 - 런타임 시각 레이어와 적 타입 색상은 `Tools/Editor/run_visual_polish_screenshot.ps1`로 검사한다.
+- 실제 사격 탄약 경제는 `Tools/Editor/run_balance_combat_test.ps1`로 검사한다.
 - 자동화 스크립트를 다시 사용할 경우 10,000 x 10,000 지형, 모서리 플랫폼, 경사로, 체크포인트 설계를 먼저 반영한다.
 - 액터 이름은 `Cube`, `Cube2` 같은 기본 이름 대신 역할 중심 이름으로 정리한다.
 - 웨이브 스폰 좌표는 100 m 전장의 실제 플레이 테스트 후 확정한다.

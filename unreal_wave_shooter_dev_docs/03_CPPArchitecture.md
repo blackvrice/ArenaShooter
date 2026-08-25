@@ -39,7 +39,7 @@ Blueprint
 | `ACWSGameMode` | `AGameModeBase` | Pawn/HUD 지정, 게임 오버·클리어·레벨 재시작, 런타임 스모크 테스트 | 구현 |
 | `ACWSHUD` | `AHUD` | 조준점, 체력, 탄창/예비 탄약, 재장전 상태, 라운드, 남은 적 표시 | 구현 |
 | `ACWSBossEnemy` | `ACWSEnemyBase` | 3단계 페이즈, Ground Slam, 넉백 Shockwave | 구현 |
-| `ACWSSupplyPickup` | `AActor` | 오버랩 수집, 체력 +40 또는 예비 탄약 +30, 회전/부유 표시 | 구현 |
+| `ACWSSupplyPickup` | `AActor` | 오버랩 수집, 체력 +40 또는 예비 탄약 +90, 회전/부유 표시 | 구현 |
 
 ## 3. 네이밍 규칙
 
@@ -158,13 +158,14 @@ GameMode BeginPlay
 - `run_combat_feedback_screenshot.ps1`: 오프스크린 게임 월드에서 피격 애니메이션과 Niagara를 예열한 뒤 사망 포즈와 사망 Niagara가 함께 보이는 1280×720 스크린샷 생성 검사
 - `run_attack_feedback_screenshot.ps1`: 실제 오디오 장치를 초기화한 오프스크린 게임 월드에서 일반 적의 피해·공격 몽타주·공격음을 검사하고 `MM_Attack_01` 공격 자세가 보이는 1280×720 스크린샷 생성 검사
 - `run_visual_polish_screenshot.ps1`: 중앙 링·엄폐물·방향 비콘과 Normal/Fast/Tank 타입 색상을 검사하고 세 타입이 함께 보이는 1280×720 스크린샷 생성 검사
+- `run_balance_combat_test.ps1`: 자동 즉사 대신 플레이어의 실제 `TryFire()`·25 데미지·0.15초 발사 간격·1.2초 재장전·라운드 보급을 사용해 97명을 404회 실제 명중으로 처치하고 탄약 경제를 검사
 - 전체 라운드 검증은 전용 Boss 클래스, 체력 1200, 최종 페이즈 전환, Ground Slam과 Shockwave 피해/넉백 경로도 함께 검사한다.
 - Warm DDC 직렬화 오류가 감지되면 스모크 러너가 격리된 Cold DDC로 한 번 자동 재시도한다.
 - `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사
 
 적 Capsule은 `ECC_Visibility`를 차단하므로 플레이어 무기의 Visibility 채널 라인트레이스가 실제 적에게 도달한다. 플레이어 사망 시 `ACWSGameMode`가 `ACWSWaveManager::StopWaveSystem()`을 호출하고 HUD에 게임 오버와 Enter 재시작 안내를 표시한다.
 
-무기는 60발 탄창과 시작 예비 탄약 90발(최대 120발)을 사용한다. 재장전은 1.2초 동안 발사를 잠그고 완료 시 필요한 수량만 예비 탄약에서 탄창으로 옮긴다. `ACWSGameMode`는 Round 1~4 클리어 때 홀수 라운드에는 탄약, 짝수 라운드에는 체력 보급을 플레이어 전방에 생성한다.
+무기는 60발 탄창과 시작 예비 탄약 360발(최대 480발)을 사용한다. 재장전은 1.2초 동안 발사를 잠그고 완료 시 필요한 수량만 예비 탄약에서 탄창으로 옮긴다. `ACWSGameMode`는 Round 1~4 클리어 때 홀수 라운드에는 탄약 90발, 짝수 라운드에는 체력 40을 플레이어 전방에 생성한다. 전체 라운드의 완벽 명중 필요량은 404발이고 두 탄약 보급을 포함한 총 예산은 600발이므로, 70% 명중률 기준 필요량 578발을 충족한다.
 
 ## 10. 확장 가능 구조
 

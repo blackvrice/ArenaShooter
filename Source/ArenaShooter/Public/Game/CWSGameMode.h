@@ -62,6 +62,9 @@ private:
 	void FinishAttackFeedbackScreenshotTest();
 	void RunVisualPolishScreenshotStep();
 	void FinishVisualPolishScreenshotTest();
+	void ConfigureBalanceCombatTimings();
+	void RunBalanceCombatStep();
+	void FinishBalanceCombatTest(bool bSucceeded, const TCHAR* Reason);
 	void SpawnRoundClearSupply(int32 RoundNumber);
 	void FinishSmokeTest(bool bSucceeded, const TCHAR* Reason);
 
@@ -85,7 +88,10 @@ private:
 	TWeakObjectPtr<ACWSSupplyPickup> LastRoundSupply;
 	TWeakObjectPtr<ACWSArenaVisualDirector> ArenaVisualDirector;
 	TArray<TWeakObjectPtr<ACWSEnemyBase>> VisualPolishScreenshotTargets;
+	TWeakObjectPtr<ACWSEnemyBase> BalanceCombatTarget;
 	TMap<TWeakObjectPtr<ACWSEnemyBase>, FVector> SmokeEnemyStartLocations;
+	TMap<int32, int32> BalanceShotsByRound;
+	TMap<ECWSEnemyType, int32> BalanceKillsByType;
 	FTimerHandle GameplayBindTimer;
 	FTimerHandle SmokeStepTimer;
 	FTimerHandle HudScreenshotTimer;
@@ -96,11 +102,13 @@ private:
 	FTimerHandle AttackFeedbackScreenshotExitTimer;
 	FTimerHandle VisualPolishScreenshotTimer;
 	FTimerHandle VisualPolishScreenshotExitTimer;
+	FTimerHandle BalanceCombatTimer;
 	float SmokeStartTime = 0.0f;
 	float HudScreenshotStartTime = 0.0f;
 	float CombatFeedbackScreenshotStartTime = 0.0f;
 	float AttackFeedbackScreenshotStartTime = 0.0f;
 	float VisualPolishScreenshotStartTime = 0.0f;
+	float BalanceCombatStartTime = 0.0f;
 	FString HudScreenshotPath;
 	FString CombatFeedbackScreenshotPath;
 	FString AttackFeedbackScreenshotPath;
@@ -111,6 +119,12 @@ private:
 	int32 VisualPolishCaptureDelaySteps = 0;
 	int32 SmokeAmmoBeforeReload = 0;
 	int32 SmokeReserveBeforeReload = 0;
+	int32 BalanceInitialAmmo = 0;
+	int32 BalanceAmmoGained = 0;
+	int32 BalanceShotsFired = 0;
+	int32 BalanceMissedShots = 0;
+	int32 BalanceAmmoSuppliesCollected = 0;
+	int32 BalanceHealthSuppliesCollected = 0;
 	bool bGameOver = false;
 	bool bGameCleared = false;
 	bool bSmokeTestEnabled = false;
@@ -182,4 +196,8 @@ private:
 	bool bVisualPolishArenaPrepared = false;
 	bool bVisualPolishScreenshotRequested = false;
 	bool bVisualPolishVerified = false;
+	bool bBalanceCombatTest = false;
+	bool bBalanceCombatConfigured = false;
+	bool bBalanceCombatFinished = false;
+	bool bBalanceTargetAimPrimed = false;
 };

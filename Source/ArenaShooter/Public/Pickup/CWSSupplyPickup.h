@@ -38,6 +38,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Supply")
 	ECWSSupplyType GetSupplyType() const { return SupplyType; }
 
+	UFUNCTION(BlueprintPure, Category = "Supply")
+	float GetHealthAmount() const { return HealthAmount; }
+
+	UFUNCTION(BlueprintPure, Category = "Supply")
+	int32 GetAmmoAmount() const { return AmmoAmount; }
+
 	UPROPERTY(BlueprintAssignable, Category = "Supply|Events")
 	FCWSSupplyCollectedEvent OnSupplyCollected;
 
@@ -69,7 +75,7 @@ private:
 	float HealthAmount = 40.0f;
 
 	UPROPERTY(EditAnywhere, Category = "Supply", meta = (ClampMin = "1"))
-	int32 AmmoAmount = 30;
+	int32 AmmoAmount = 90;
 
 	UPROPERTY(EditAnywhere, Category = "Supply|Visual", meta = (ClampMin = "0.0"))
 	float BobHeight = 18.0f;

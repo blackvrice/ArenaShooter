@@ -123,7 +123,7 @@ void ACWSSupplyPickup::UpdatePresentation()
 	}
 
 	const bool bHealthSupply = SupplyType == ECWSSupplyType::Health;
-	SupplyLabel->SetText(FText::FromString(bHealthSupply ? TEXT("HEALTH +40") : TEXT("AMMO +30")));
+	SupplyLabel->SetText(FText::FromString(bHealthSupply ? TEXT("HEALTH +40") : TEXT("AMMO +90")));
 	SupplyLabel->SetTextRenderColor(bHealthSupply ? FColor::Green : FColor::Yellow);
 	SupplyMesh->SetVectorParameterValueOnMaterials(
 		TEXT("Color"),

@@ -43,6 +43,15 @@ public:
 	int32 GetMaxReserveAmmo() const { return MaxReserveAmmo; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
+	int32 GetStartingReserveAmmo() const { return StartingReserveAmmo; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetDamage() const { return Damage; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	float GetFireInterval() const { return FireInterval; }
+
+	UFUNCTION(BlueprintPure, Category = "Weapon")
 	bool IsReloading() const { return bIsReloading; }
 
 	UFUNCTION(BlueprintPure, Category = "Weapon")
@@ -76,13 +85,13 @@ private:
 	int32 CurrentAmmo = 60;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon", meta = (ClampMin = "0"))
-	int32 StartingReserveAmmo = 90;
+	int32 StartingReserveAmmo = 360;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon", meta = (ClampMin = "1"))
-	int32 MaxReserveAmmo = 120;
+	int32 MaxReserveAmmo = 480;
 
 	UPROPERTY(VisibleAnywhere, Category = "Weapon")
-	int32 CurrentReserveAmmo = 90;
+	int32 CurrentReserveAmmo = 360;
 
 	UPROPERTY(EditAnywhere, Category = "Weapon", meta = (ClampMin = "0.05"))
 	float ReloadDuration = 1.2f;

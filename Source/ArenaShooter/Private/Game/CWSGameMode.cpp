@@ -107,6 +107,20 @@ void ACWSGameMode::BeginPlay()
 		UE_LOG(LogCWSGame, Display, TEXT("CWS_VISUAL_POLISH_SCREENSHOT_STARTED"));
 	}
 
+	bBalanceCombatTest = FParse::Param(FCommandLine::Get(), TEXT("CWSBalanceCombatTest"));
+	if (bBalanceCombatTest)
+	{
+		BalanceCombatStartTime = GetWorld()->GetTimeSeconds();
+		GetWorldTimerManager().SetTimer(
+			BalanceCombatTimer,
+			this,
+			&ACWSGameMode::RunBalanceCombatStep,
+			0.03f,
+			true,
+			0.1f);
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_BALANCE_COMBAT_STARTED"));
+	}
+
 	bSmokeTestAllRounds = FParse::Param(FCommandLine::Get(), TEXT("CWSAllRoundsSmokeTest"));
 	bSmokeTestEnabled = bSmokeTestAllRounds || FParse::Param(FCommandLine::Get(), TEXT("CWSRoundOneSmokeTest"));
 	if (!bSmokeTestEnabled)
@@ -743,6 +757,237 @@ void ACWSGameMode::ConfigureAllRoundsSmokeTimings()
 	}
 	bSmokeTimingsConfigured = true;
 	UE_LOG(LogCWSGame, Display, TEXT("All-round smoke timings accelerated."));
+}
+
+void ACWSGameMode::ConfigureBalanceCombatTimings()
+{
+	if (bBalanceCombatConfigured || !WaveManager.IsValid())
+	{
+		return;
+	}
+
+	for (FCWSRoundDefinition& Round : WaveManager->Rounds)
+	{
+		Round.PreRoundDelay = 0.05f;
+		Round.PostRoundDelay = 0.05f;
+		for (FCWSRoundSpawnGroup& Group : Round.SpawnGroups)
+		{
+			Group.SpawnInterval = 0.05f;
+		}
+	}
+	bBalanceCombatConfigured = true;
+}
+
+void ACWSGameMode::RunBalanceCombatStep()
+{
+	if (!bBalanceCombatTest || bBalanceCombatFinished || !GetWorld())
+	{
+		return;
+	}
+	if (GetWorld()->GetTimeSeconds() - BalanceCombatStartTime > 120.0f)
+	{
+		FinishBalanceCombatTest(false, TEXT("actual-hit balance run exceeded 120 seconds"));
+		return;
+	}
+
+	BindGameplayActors();
+	ConfigureBalanceCombatTimings();
+	ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	APlayerController* PlayerController = PlayerCharacter ? Cast<APlayerController>(PlayerCharacter->GetController()) : nullptr;
+	UCWSHitscanWeaponComponent* Weapon = PlayerCharacter ? PlayerCharacter->GetWeaponComponent() : nullptr;
+	if (!PlayerCharacter || !PlayerController || !Weapon || !WaveManager.IsValid() || !bBalanceCombatConfigured)
+	{
+		return;
+	}
+	if (BalanceInitialAmmo == 0)
+	{
+		BalanceInitialAmmo = Weapon->GetCurrentAmmo() + Weapon->GetReserveAmmo();
+		UE_LOG(
+			LogCWSGame,
+			Display,
+			TEXT("CWS_BALANCE_AMMO_BUDGET: Magazine=%d StartingReserve=%d MaxReserve=%d Supply=%d"),
+			Weapon->GetMaxAmmo(),
+			Weapon->GetStartingReserveAmmo(),
+			Weapon->GetMaxReserveAmmo(),
+			GetDefault<ACWSSupplyPickup>()->GetAmmoAmount());
+	}
+
+	if (ACWSSupplyPickup* Supply = LastRoundSupply.Get())
+	{
+		const ECWSSupplyType SupplyType = Supply->GetSupplyType();
+		if (SupplyType == ECWSSupplyType::Health && PlayerHealth.IsValid())
+		{
+			PlayerHealth->ApplyHealthChange(-10.0f, this);
+		}
+		const int32 AmmoBefore = Weapon->GetCurrentAmmo() + Weapon->GetReserveAmmo();
+		if (Supply->TryCollect(PlayerCharacter))
+		{
+			if (SupplyType == ECWSSupplyType::Ammo)
+			{
+				++BalanceAmmoSuppliesCollected;
+				BalanceAmmoGained += Weapon->GetCurrentAmmo() + Weapon->GetReserveAmmo() - AmmoBefore;
+			}
+			else
+			{
+				++BalanceHealthSuppliesCollected;
+			}
+			LastRoundSupply.Reset();
+		}
+	}
+	if (PlayerHealth.IsValid())
+	{
+		PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+	}
+
+	TArray<ACWSEnemyBase*> AliveEnemies;
+	for (TActorIterator<ACWSEnemyBase> It(GetWorld()); It; ++It)
+	{
+		ACWSEnemyBase* Enemy = *It;
+		if (Enemy->GetHealthComponent() && Enemy->GetHealthComponent()->IsAlive())
+		{
+			Enemy->GetCharacterMovement()->DisableMovement();
+			Enemy->DetachFromControllerPendingDestroy();
+			AliveEnemies.Add(Enemy);
+		}
+	}
+
+	ACWSEnemyBase* Target = BalanceCombatTarget.Get();
+	if (!Target || !Target->GetHealthComponent() || !Target->GetHealthComponent()->IsAlive())
+	{
+		BalanceCombatTarget.Reset();
+		bBalanceTargetAimPrimed = false;
+		Target = AliveEnemies.IsEmpty() ? nullptr : AliveEnemies[0];
+		if (Target)
+		{
+			BalanceCombatTarget = Target;
+		}
+	}
+
+	const FVector Forward = PlayerCharacter->GetActorForwardVector().GetSafeNormal2D();
+	const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
+	int32 ParkedIndex = 0;
+	for (ACWSEnemyBase* Enemy : AliveEnemies)
+	{
+		if (Enemy == Target)
+		{
+			continue;
+		}
+		const float Side = static_cast<float>((ParkedIndex % 9) - 4) * 180.0f;
+		const float Back = 1400.0f + static_cast<float>(ParkedIndex / 9) * 180.0f;
+		Enemy->TeleportTo(PlayerCharacter->GetActorLocation() - Forward * Back + Right * Side, Enemy->GetActorRotation());
+		++ParkedIndex;
+	}
+
+	if (Target)
+	{
+		const FVector TargetLocation = PlayerCharacter->GetActorLocation() + Forward * 800.0f;
+		Target->TeleportTo(TargetLocation, (-Forward).Rotation());
+		PlayerController->SetControlRotation(
+			(TargetLocation + FVector(0.0f, 0.0f, 65.0f) - PlayerCharacter->GetPawnViewLocation()).Rotation());
+		if (!bBalanceTargetAimPrimed)
+		{
+			bBalanceTargetAimPrimed = true;
+			return;
+		}
+		const float HealthBefore = Target->GetHealthComponent()->GetCurrentHealth();
+		const int32 AmmoBefore = Weapon->GetCurrentAmmo();
+		if (Weapon->TryFire() && Weapon->GetCurrentAmmo() < AmmoBefore)
+		{
+			++BalanceShotsFired;
+			BalanceShotsByRound.FindOrAdd(WaveManager->GetCurrentRound())++;
+			const float HealthAfter = Target->GetHealthComponent()->GetCurrentHealth();
+			if (HealthAfter >= HealthBefore)
+			{
+				++BalanceMissedShots;
+			}
+			if (!Target->GetHealthComponent()->IsAlive())
+			{
+				BalanceKillsByType.FindOrAdd(Target->GetEnemyType())++;
+				BalanceCombatTarget.Reset();
+				bBalanceTargetAimPrimed = false;
+			}
+		}
+		else if (Weapon->GetCurrentAmmo() <= 0 && Weapon->GetReserveAmmo() <= 0)
+		{
+			FinishBalanceCombatTest(false, TEXT("ammo exhausted before all enemies were defeated"));
+		}
+		return;
+	}
+
+	if (bGameCleared && WaveManager->GetWavePhase() == ECWSWavePhase::Completed)
+	{
+		FinishBalanceCombatTest(true, TEXT("all five rounds cleared through actual hitscan damage"));
+	}
+}
+
+void ACWSGameMode::FinishBalanceCombatTest(const bool bSucceeded, const TCHAR* Reason)
+{
+	if (bBalanceCombatFinished)
+	{
+		return;
+	}
+	bBalanceCombatFinished = true;
+	GetWorldTimerManager().ClearTimer(BalanceCombatTimer);
+
+	ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
+	UCWSHitscanWeaponComponent* Weapon = PlayerCharacter ? PlayerCharacter->GetWeaponComponent() : nullptr;
+	const TArray<int32> ExpectedRoundShots = {24, 40, 104, 132, 104};
+	bool bRoundShotsMatch = true;
+	for (int32 Index = 0; Index < ExpectedRoundShots.Num(); ++Index)
+	{
+		const int32 RoundNumber = Index + 1;
+		const int32 ActualShots = BalanceShotsByRound.FindRef(RoundNumber);
+		bRoundShotsMatch = bRoundShotsMatch && ActualShots == ExpectedRoundShots[Index];
+		UE_LOG(
+			LogCWSGame,
+			Display,
+			TEXT("CWS_BALANCE_ROUND: Round=%d ActualHitShots=%d Expected=%d"),
+			RoundNumber,
+			ActualShots,
+			ExpectedRoundShots[Index]);
+	}
+
+	const int32 TotalEnemies = BalanceKillsByType.FindRef(ECWSEnemyType::Normal) +
+		BalanceKillsByType.FindRef(ECWSEnemyType::Fast) +
+		BalanceKillsByType.FindRef(ECWSEnemyType::Tank) +
+		BalanceKillsByType.FindRef(ECWSEnemyType::Boss);
+	const int32 RequiredAtSeventyPercent = FMath::CeilToInt(static_cast<float>(BalanceShotsFired) / 0.70f);
+	const int32 TotalAvailableAmmo = BalanceInitialAmmo + 2 * GetDefault<ACWSSupplyPickup>()->GetAmmoAmount();
+	const int32 RemainingAmmo = Weapon ? Weapon->GetCurrentAmmo() + Weapon->GetReserveAmmo() : -1;
+	const bool bVerified = bSucceeded && bRoundShotsMatch && BalanceShotsFired == 404 && BalanceMissedShots == 0 &&
+		TotalEnemies == 97 && BalanceKillsByType.FindRef(ECWSEnemyType::Normal) == 44 &&
+		BalanceKillsByType.FindRef(ECWSEnemyType::Fast) == 32 && BalanceKillsByType.FindRef(ECWSEnemyType::Tank) == 20 &&
+		BalanceKillsByType.FindRef(ECWSEnemyType::Boss) == 1 && BalanceAmmoSuppliesCollected == 2 &&
+		BalanceHealthSuppliesCollected == 2 && BalanceAmmoGained == 180 &&
+		TotalAvailableAmmo >= RequiredAtSeventyPercent && RemainingAmmo == 196;
+	if (bVerified)
+	{
+		UE_LOG(
+			LogCWSGame,
+			Display,
+			TEXT("CWS_BALANCE_COMBAT_SUCCESS: Enemies=97 ActualHitShots=404 AvailableAt70Percent=600 RequiredAt70Percent=%d RemainingAfterPerfectRun=%d AmmoSupplies=2 HealthSupplies=2"),
+			RequiredAtSeventyPercent,
+			RemainingAmmo);
+	}
+	else
+	{
+		UE_LOG(
+			LogCWSGame,
+			Error,
+			TEXT("CWS_BALANCE_COMBAT_FAILURE: %s Enemies=%d Shots=%d Misses=%d AmmoGained=%d Remaining=%d AmmoSupplies=%d HealthSupplies=%d"),
+			Reason,
+			TotalEnemies,
+			BalanceShotsFired,
+			BalanceMissedShots,
+			BalanceAmmoGained,
+			RemainingAmmo,
+			BalanceAmmoSuppliesCollected,
+			BalanceHealthSuppliesCollected);
+	}
+	FPlatformMisc::RequestExitWithStatus(
+		true,
+		bVerified ? 0 : 21,
+		bVerified ? TEXT("CWS balance combat test succeeded") : TEXT("CWS balance combat test failed"));
 }
 
 void ACWSGameMode::PrepareSmokeWeaponTarget(ACWSPlayerCharacter* PlayerCharacter)
