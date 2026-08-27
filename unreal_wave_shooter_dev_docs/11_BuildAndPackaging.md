@@ -42,3 +42,18 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 - Cook 520개 패키지, 오류 0 / 경고 0
 - Stage/Pak/IoStore/Archive 성공
 - 패키지의 실제 Shipping 실행 파일로 전체 라운드 스모크 종료 코드 0 확인
+
+## 5. 2026-08-27 출시 후보
+
+- 게임 코드 커밋: `32218bc`
+- Win64 Shipping/Editor 컴파일 성공
+- Cook 515개 패키지, Stage/Pak/IoStore/Archive 성공
+- 실제 `ArenaShooter-Win64-Shipping.exe`에서 Round 1~5 전체 스모크 종료 코드 0
+- 성공 마커: `CWS_PACKAGE_VERIFICATION_SUCCESS`
+- 보존 패키지: `C:\ArenaShooterPackages\ArenaShooter-20260827-202923-32218bc`
+- 배포 ZIP: `C:\ArenaShooterPackages\ArenaShooter-20260827-202923-32218bc-Windows.zip`
+- ZIP 크기: 319,659,273 bytes
+- ZIP SHA-256: `84A1301D83EE678834A0C6D6F38B6AF650AFDA053ADCAD81D0981E4932955453`
+- Shipping 실행 파일 SHA-256: `F37CB6B634FD5AC1792DD15B8DC98A9244A269D214BC039E3A97F76044A934F7`
+
+첫 두 출시 후보는 `UNiagaraStatelessEmitter::Serialize`에서 Shipping 전용 접근 위반이 발생해 승인하지 않았다. 피격/사망 효과를 `ACWSCombatBurstEffect` 네이티브 메시·라이트 버스트로 교체하고 Niagara 런타임 참조를 제거한 뒤 기본 맵 로드와 전체 라운드 패키지 검증을 통과했다. 원본 Archive는 PDB를 보존하고, 배포 ZIP은 PDB를 제외했다.

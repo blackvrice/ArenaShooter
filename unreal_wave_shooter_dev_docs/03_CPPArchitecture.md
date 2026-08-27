@@ -29,8 +29,8 @@ Blueprint
 |---|---|---|---|
 | `ACWSPlayerCharacter` | `ACharacter` | 이동, 카메라, 사격/재장전 입력 | 구현 |
 | `UCWSHealthComponent` | `UActorComponent` | 체력, 엔진 데미지 수신, 사망 이벤트 | 구현 |
-| `UCWSHitscanWeaponComponent` | `UActorComponent` | 히트스캔, 탄창/예비 탄약, 시간 기반 재장전, 발사 간격, 포인트 데미지와 피격 Niagara | 구현 |
-| `ACWSEnemyBase` | `ACharacter` | 기본 적 체력, 이동속도, 근접 공격, 피격/사망 애니메이션과 사망 Niagara | 구현 |
+| `UCWSHitscanWeaponComponent` | `UActorComponent` | 히트스캔, 탄창/예비 탄약, 시간 기반 재장전, 발사 간격, 포인트 데미지와 피격 버스트 | 구현 |
+| `ACWSEnemyBase` | `ACharacter` | 기본 적 체력, 이동속도, 근접 공격, 피격/사망 애니메이션과 사망 버스트 | 구현 |
 | `ACWSFastEnemy` | `ACWSEnemyBase` | 저체력·고속·짧은 공격 간격의 측면 압박 적 | 구현 |
 | `ACWSTankEnemy` | `ACWSEnemyBase` | 고체력·저속·고데미지의 전면 압박 적 | 구현 |
 | `ACWSEnemyAIController` | `AAIController` | 플레이어 추적 및 공격 거리 제어 | 구현 |
@@ -142,9 +142,9 @@ GameMode BeginPlay
 
 ## 8. EnemyBase 설계
 
-`ACWSEnemyBase`는 체력 60, 이동속도 350, 공격력 10의 Normal 적이며 근접 공격 거리/데미지/간격을 제공한다. `ACWSFastEnemy`는 체력 35, 속도 520, 공격력 8, 공격 간격 0.65초이고, `ACWSTankEnemy`는 체력 180, 속도 230, 공격력 18, 공격 간격 1.4초다. 세 타입 모두 `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `MM_Attack_01` 동적 몽타주와 공격음을 재생한 뒤 `ApplyDamage`를 호출한다. 비치명타에는 additive 피격 애니메이션을 재생하고, 사망하면 이동과 충돌을 끈 뒤 사망 애니메이션과 확대된 `NS_Damage` Niagara를 재생하며 웨이브 매니저에 `OnDeath`를 전달한다. 보스의 Ground Slam과 Shockwave는 같은 공격 애니메이션 경로와 별도의 저역 폭발음을 사용한다.
+`ACWSEnemyBase`는 체력 60, 이동속도 350, 공격력 10의 Normal 적이며 근접 공격 거리/데미지/간격을 제공한다. `ACWSFastEnemy`는 체력 35, 속도 520, 공격력 8, 공격 간격 0.65초이고, `ACWSTankEnemy`는 체력 180, 속도 230, 공격력 18, 공격 간격 1.4초다. 세 타입 모두 `ACWSEnemyAIController`가 플레이어를 NavMesh로 추적하고 공격 거리 안에서 `MM_Attack_01` 동적 몽타주와 공격음을 재생한 뒤 `ApplyDamage`를 호출한다. 비치명타에는 additive 피격 애니메이션을 재생하고, 사망하면 이동과 충돌을 끈 뒤 사망 애니메이션과 타입 색상의 확대 버스트를 재생하며 웨이브 매니저에 `OnDeath`를 전달한다. 보스의 Ground Slam과 Shockwave는 같은 공격 애니메이션 경로와 별도의 저역 폭발음을 사용한다.
 
-`UCWSHitscanWeaponComponent`는 발사 위치에서 총성을 재생하고 Visibility 라인트레이스 충돌 지점에 충돌음과 `NS_Damage` Niagara를 생성한 뒤 포인트 데미지를 적용한다. `UCWSCombatSoundWave`가 44.1 kHz mono PCM을 런타임에 합성하므로 외부 오디오 에셋 없이 Editor와 Shipping에서 동일한 발사/충돌/근접/폭발 음향 경로를 사용한다. `-nullrhi -nosound` 스모크에서는 PCM 큐와 이펙트 생성 경로 실행을 카운터로 검사하고, 실제 XAudio2 장치와 렌더링 결과는 별도 오프스크린 캡처로 확인한다.
+`UCWSHitscanWeaponComponent`는 발사 위치에서 총성을 재생하고 Visibility 라인트레이스 충돌 지점에 충돌음과 `ACWSCombatBurstEffect`를 생성한 뒤 포인트 데미지를 적용한다. 버스트 액터는 충돌 없는 구형 메시를 확장하고 짧은 포인트 라이트를 감쇠시켜 Editor와 Shipping에서 같은 피격/사망 VFX 경로를 사용한다. `UCWSCombatSoundWave`는 44.1 kHz mono PCM을 런타임에 합성한다. `-nullrhi -nosound` 스모크에서는 PCM 큐와 버스트 생성 경로를 카운터로 검사하고, 실제 XAudio2 장치와 렌더링 결과는 별도 오프스크린 캡처로 확인한다.
 
 `ACWSArenaVisualDirector`는 저장된 World Partition 맵 액터를 수정하지 않고 런타임에 중앙 링 24조각, 충돌과 내비게이션을 반영하는 엄폐물 8개, 동서남북 게이트 비콘 8개를 생성한다. `ACWSEnemyBase`는 타입별 머리 위 마커와 발밑 밴드를 함께 생성하며 Normal은 초록, Fast는 주황, Tank는 파랑, Boss는 보라로 구분한다. 이 레이어는 네이티브 코드에서 생성되므로 Editor와 Shipping이 같은 배치를 사용한다.
 
@@ -152,10 +152,10 @@ GameMode BeginPlay
 
 - `run_build_playable_round_one.ps1 -InspectOnly`: PlayerStart, NavMesh Bounds, GameMode, 적 클래스와 Map Check 검사
 - `run_build_wave_spawning.ps1 -InspectOnly`: 9개 스폰 지점, Normal/Fast/Tank/Boss 클래스 연결, `8 / 16 / 24 / 34 / 15` 라운드 수량 검사
-- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 발사/충돌 PCM 생성, 일반 적 공격 피해/몽타주/공격음, 피격/사망 애니메이션과 Niagara 생성 경로, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, `Preparing → Active → RoundCleared` 페이즈, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
+- `run_round_one_smoke.ps1`: 실제 `TryFire()` 히트스캔 피격/사망, 발사/충돌 PCM 생성, 일반 적 공격 피해/몽타주/공격음, 피격/사망 애니메이션과 네이티브 버스트 생성 경로, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, 적 NavMesh 이동, Round 1 클리어, `Preparing → Active → RoundCleared` 페이즈, 플레이어 피격 사망, 웨이브 정지, 현재 레벨 재시작 검사
 - `run_round_one_smoke.ps1 -AllRounds`: 실제 게임 월드에서 Round 1~5의 97개 스폰, 전투 피드백, Fast/Tank 클래스와 능력치, Boss Ground Slam/Shockwave 폭발음, Round 1~4 보급 생성, 각 라운드 클리어, 라운드 공지 페이즈와 최종 `Completed` 전환 검사
 - `run_hud_screenshot.ps1`: Round 1 `Preparing` 상태를 1280×720 오프스크린으로 렌더링해 중앙 카운트다운 HUD 스크린샷 생성 검사
-- `run_combat_feedback_screenshot.ps1`: 오프스크린 게임 월드에서 피격 애니메이션과 Niagara를 예열한 뒤 사망 포즈와 사망 Niagara가 함께 보이는 1280×720 스크린샷 생성 검사
+- `run_combat_feedback_screenshot.ps1`: 오프스크린 게임 월드에서 피격 애니메이션과 네이티브 버스트를 예열한 뒤 사망 포즈와 타입 색상 버스트가 함께 보이는 1280×720 스크린샷 생성 검사
 - `run_attack_feedback_screenshot.ps1`: 실제 오디오 장치를 초기화한 오프스크린 게임 월드에서 일반 적의 피해·공격 몽타주·공격음을 검사하고 `MM_Attack_01` 공격 자세가 보이는 1280×720 스크린샷 생성 검사
 - `run_visual_polish_screenshot.ps1`: 중앙 링·엄폐물·방향 비콘과 Normal/Fast/Tank 타입 색상을 검사하고 세 타입이 함께 보이는 1280×720 스크린샷 생성 검사
 - `run_balance_combat_test.ps1`: 자동 즉사 대신 플레이어의 실제 `TryFire()`·25 데미지·0.15초 발사 간격·1.2초 재장전·라운드 보급을 사용해 97명을 404회 실제 명중으로 처치하고 탄약 경제를 검사

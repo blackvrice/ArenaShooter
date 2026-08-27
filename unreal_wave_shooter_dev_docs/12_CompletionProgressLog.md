@@ -129,3 +129,28 @@
 ### 다음 순서
 
 5단계: 최신 코드 기준 Win64 Shipping 출시 후보 패키지, 실행 검증, README/기술 문서와 촬영 체크리스트 정리.
+
+## 2026-08-27 - 5단계: Shipping 출시 후보와 포트폴리오 정리
+
+상태: 완료
+
+### 분석과 수정
+
+- 첫 최신 Shipping 패키지는 Build/Cook/Stage/Pak/Archive에는 성공했지만 기본 맵 로드에서 종료 코드 3으로 실패했다.
+- Shipping PDB와 CrashContext를 심볼화해 `UNiagaraStatelessEmitter::Serialize` 접근 위반을 확인했다.
+- `NS_Damage`를 UE 5.6으로 재저장해도 같은 충돌이 재현되어 에셋 포맷 갱신만으로는 해결되지 않았다.
+- 피격/사망 효과를 `ACWSCombatBurstEffect`의 확장 메시와 감쇠 포인트 라이트로 교체하고 Niagara 기본 객체 참조와 모듈 의존성을 제거했다.
+
+### 검증과 배포
+
+- 네이티브 버스트 적용 후 Editor Development 빌드 성공.
+- Round 1~5 전체 회귀와 피격/사망 오프스크린 캡처 통과, 밝은 청록 버스트를 직접 시각 확인.
+- `32218bc` 기준 Shipping/Editor 컴파일, Cook 515개, Stage/Pak/IoStore/Archive 성공.
+- 실제 Shipping 실행 파일에서 Round 1~5 전체 스모크 종료 코드 0과 `CWS_PACKAGE_VERIFICATION_SUCCESS` 확인.
+- PDB 포함 Archive를 보존하고 PDB 제외 319,659,273 bytes 배포 ZIP과 SHA-256을 생성했다.
+- GitHub README, 기술 문서 인덱스, 최신 패키징 결과, 포트폴리오 소개 문안과 촬영 체크리스트를 정리했다.
+- 사용자 소유 Config, World Partition 외부 액터, PPTX와 IDE 파일은 수정 범위와 커밋에서 제외했다.
+
+### 완료 상태
+
+코드·자동 검증·Shipping 출시 후보·배포 ZIP·기술 문서·포트폴리오 페이지까지 완료했다. 실제 사람 조작이 필요한 영상 녹화와 최종 체감 QA는 `13_PortfolioAndRelease.md`의 체크리스트로 인계한다.
