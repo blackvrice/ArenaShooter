@@ -2,21 +2,15 @@
 
 #include "Audio/CWSCombatSound.h"
 #include "DrawDebugHelpers.h"
+#include "Feedback/CWSCombatBurstEffect.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
-#include "NiagaraFunctionLibrary.h"
-#include "NiagaraSystem.h"
 #include "TimerManager.h"
-#include "UObject/ConstructorHelpers.h"
 
 UCWSHitscanWeaponComponent::UCWSHitscanWeaponComponent()
 {
 	PrimaryComponentTick.bCanEverTick = false;
-
-	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> ImpactEffectAsset(
-		TEXT("/Game/Variant_Combat/VFX/NS_Damage.NS_Damage"));
-	ImpactEffect = ImpactEffectAsset.Object;
 }
 
 void UCWSHitscanWeaponComponent::BeginPlay()
@@ -84,13 +78,12 @@ bool UCWSHitscanWeaponComponent::TryFire()
 		{
 			++ImpactSoundPlayCount;
 		}
-		if (ImpactEffect)
+		if (ACWSCombatBurstEffect::SpawnBurst(
+			World,
+			Hit.ImpactPoint + Hit.ImpactNormal * 8.0f,
+			FLinearColor(0.15f, 0.8f, 1.0f),
+			0.32f))
 		{
-			UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-				World,
-				ImpactEffect,
-				Hit.ImpactPoint,
-				Hit.ImpactNormal.Rotation());
 			++ImpactEffectSpawnCount;
 		}
 		UGameplayStatics::ApplyPointDamage(

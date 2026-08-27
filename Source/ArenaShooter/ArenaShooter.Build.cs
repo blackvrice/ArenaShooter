@@ -17,8 +17,7 @@ public class ArenaShooter : ModuleRules
 			"EnhancedInput",
 			"AIModule",
 			"GameplayTasks",
-			"NavigationSystem",
-			"Niagara"
+			"NavigationSystem"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

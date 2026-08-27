@@ -7,14 +7,13 @@
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Enemy/CWSEnemyAIController.h"
+#include "Feedback/CWSCombatBurstEffect.h"
 #include "Animation/AnimInstance.h"
 #include "Animation/AnimMontage.h"
 #include "Animation/AnimSequenceBase.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
-#include "NiagaraFunctionLibrary.h"
-#include "NiagaraSystem.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -102,9 +101,6 @@ ACWSEnemyBase::ACWSEnemyBase()
 	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> DeathAnimationAsset(
 		TEXT("/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_01.MM_Death_Front_01"));
 	DeathAnimation = DeathAnimationAsset.Object;
-	static ConstructorHelpers::FObjectFinder<UNiagaraSystem> DeathEffectAsset(
-		TEXT("/Game/Variant_Combat/VFX/NS_Damage.NS_Damage"));
-	DeathEffect = DeathEffectAsset.Object;
 }
 
 void ACWSEnemyBase::BeginPlay()
@@ -299,17 +295,12 @@ void ACWSEnemyBase::PlayFeedbackAnimation(UAnimSequenceBase* Animation)
 
 bool ACWSEnemyBase::SpawnDeathEffect()
 {
-	if (!DeathEffect || !GetWorld())
-	{
-		return false;
-	}
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(
+	return ACWSCombatBurstEffect::SpawnBurst(
 		GetWorld(),
-		DeathEffect,
 		GetActorLocation() + FVector(0.0f, 0.0f, 70.0f),
-		FRotator::ZeroRotator,
-		FVector(3.0f));
-	return true;
+		GetArchetypeColor(),
+		1.35f,
+		0.55f);
 }
 
 void ACWSEnemyBase::HandleDeath(AActor* DeadActor)

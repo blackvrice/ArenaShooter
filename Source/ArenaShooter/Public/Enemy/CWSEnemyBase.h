@@ -7,7 +7,6 @@
 
 class UCWSHealthComponent;
 class UAnimSequenceBase;
-class UNiagaraSystem;
 class UPointLightComponent;
 class UStaticMeshComponent;
 
@@ -106,9 +105,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
 	TObjectPtr<UAnimSequenceBase> DeathAnimation;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
-	TObjectPtr<UNiagaraSystem> DeathEffect;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Enemy|Presentation")
 	TObjectPtr<UStaticMeshComponent> ArchetypeMarker;

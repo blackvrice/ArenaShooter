@@ -4,8 +4,6 @@
 #include "Components/ActorComponent.h"
 #include "CWSHitscanWeaponComponent.generated.h"
 
-class UNiagaraSystem;
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCWSAmmoChangedEvent, int32, CurrentAmmo, int32, MaxAmmo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCWSReserveAmmoChangedEvent, int32, ReserveAmmo, int32, MaxReserveAmmo);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSReloadStateEvent, bool, bIsReloading);
@@ -107,9 +105,6 @@ private:
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	bool bDrawDebugShot = false;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Weapon|Feedback")
-	TObjectPtr<UNiagaraSystem> ImpactEffect;
 
 	float NextAllowedFireTime = 0.0f;
 	bool bIsReloading = false;
