@@ -1,11 +1,16 @@
 #include "Player/CWSPlayerCharacter.h"
 
+#include "Animation/AnimSequence.h"
+#include "Animation/AnimSingleNodeInstance.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CWSHealthComponent.h"
 #include "Components/CWSHitscanWeaponComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
 #include "Game/CWSGameMode.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerController.h"
@@ -15,15 +20,24 @@
 #include "InputMappingContext.h"
 #include "UObject/ConstructorHelpers.h"
 
+namespace
+{
+	UAnimSequence* LoadRifleAnimation(const TCHAR* AssetPath)
+	{
+		const ConstructorHelpers::FObjectFinder<UAnimSequence> AnimationAsset(AssetPath);
+		return AnimationAsset.Object;
+	}
+}
+
 ACWSPlayerCharacter::ACWSPlayerCharacter()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	GetCapsuleComponent()->InitCapsuleSize(42.0f, 96.0f);
 	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = false;
+	bUseControllerRotationYaw = true;
 	bUseControllerRotationRoll = false;
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	GetCharacterMovement()->bOrientRotationToMovement = false;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
 	GetCharacterMovement()->JumpZVelocity = 700.0f;
 	GetCharacterMovement()->AirControl = 0.35f;
@@ -41,6 +55,18 @@ ACWSPlayerCharacter::ACWSPlayerCharacter()
 	HealthComponent = CreateDefaultSubobject<UCWSHealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->SetMaxHealth(100.0f);
 	WeaponComponent = CreateDefaultSubobject<UCWSHitscanWeaponComponent>(TEXT("WeaponComponent"));
+	WeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponMesh"));
+	WeaponMesh->SetupAttachment(GetMesh(), TEXT("ik_hand_gun"));
+	WeaponMesh->SetRelativeRotation(FRotator(0.0f, 90.0f, 0.0f));
+	WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	WeaponMesh->SetGenerateOverlapEvents(false);
+	WeaponMesh->SetCanEverAffectNavigation(false);
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> RifleMeshAsset(
+		TEXT("/Game/Weapons/Rifle/Mesh/SM_Rifle.SM_Rifle"));
+	if (RifleMeshAsset.Succeeded())
+	{
+		WeaponMesh->SetStaticMesh(RifleMeshAsset.Object);
+	}
 
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> PlayerMeshAsset(
 		TEXT("/Game/Characters/Mannequins/Meshes/SKM_Manny_Simple.SKM_Manny_Simple"));
@@ -51,12 +77,26 @@ ACWSPlayerCharacter::ACWSPlayerCharacter()
 		GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
 	}
 
-	static ConstructorHelpers::FClassFinder<UAnimInstance> PlayerAnimClass(
-		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed"));
-	if (PlayerAnimClass.Succeeded())
-	{
-		GetMesh()->SetAnimInstanceClass(PlayerAnimClass.Class);
-	}
+	RifleIdleAnimation = LoadRifleAnimation(
+		TEXT("/Game/Characters/Mannequins/Anims/Rifle/MF_Rifle_Idle_ADS.MF_Rifle_Idle_ADS"));
+	RifleJogAnimations = {
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd.MF_Rifle_Jog_Fwd")),
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd_Right.MF_Rifle_Jog_Fwd_Right")),
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Right.MF_Rifle_Jog_Right")),
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd_Right.MF_Rifle_Jog_Bwd_Right")),
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd.MF_Rifle_Jog_Bwd")),
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Bwd_Left.MF_Rifle_Jog_Bwd_Left")),
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Left.MF_Rifle_Jog_Left")),
+		LoadRifleAnimation(TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jog/MF_Rifle_Jog_Fwd_Left.MF_Rifle_Jog_Fwd_Left")),
+	};
+	RifleJumpAnimation = LoadRifleAnimation(
+		TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Start_Loop.MM_Rifle_Jump_Start_Loop"));
+	RifleFallAnimation = LoadRifleAnimation(
+		TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Fall_Loop.MM_Rifle_Jump_Fall_Loop"));
+	RifleFireAnimation = LoadRifleAnimation(
+		TEXT("/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Fire.MM_Rifle_Fire"));
+	RifleReloadAnimation = LoadRifleAnimation(
+		TEXT("/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Reload.MM_Rifle_Reload"));
 
 	static ConstructorHelpers::FObjectFinder<UInputMappingContext> DefaultContextAsset(
 		TEXT("/Game/Input/IMC_Default.IMC_Default"));
@@ -87,6 +127,7 @@ void ACWSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	HealthComponent->OnDeath.AddDynamic(this, &ACWSPlayerCharacter::HandleDeath);
+	PlayRifleAnimation(RifleIdleAnimation, true);
 	CombatMappingContext = NewObject<UInputMappingContext>(this, TEXT("CWSCombatMappingContext"));
 	if (FireAction)
 	{
@@ -113,6 +154,12 @@ void ACWSPlayerCharacter::BeginPlay()
 			}
 		}
 	}
+}
+
+void ACWSPlayerCharacter::Tick(const float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	UpdateRifleAnimation();
 }
 
 void ACWSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -188,7 +235,14 @@ void ACWSPlayerCharacter::Fire(const FInputActionValue& Value)
 {
 	if (HealthComponent->IsAlive())
 	{
-		WeaponComponent->TryFire();
+		if (WeaponComponent->TryFire())
+		{
+			PlayRifleAction(RifleFireAnimation, WeaponComponent->GetFireInterval());
+		}
+		else if (WeaponComponent->IsReloading() && CurrentRifleAnimation != RifleReloadAnimation)
+		{
+			PlayRifleAction(RifleReloadAnimation, WeaponComponent->GetReloadDuration());
+		}
 	}
 }
 
@@ -196,8 +250,79 @@ void ACWSPlayerCharacter::Reload(const FInputActionValue& Value)
 {
 	if (HealthComponent->IsAlive())
 	{
-		WeaponComponent->Reload();
+		if (WeaponComponent->Reload())
+		{
+			PlayRifleAction(RifleReloadAnimation, WeaponComponent->GetReloadDuration());
+		}
 	}
+}
+
+void ACWSPlayerCharacter::UpdateRifleAnimation()
+{
+	if (!HealthComponent || !HealthComponent->IsAlive() || !GetWorld() || GetWorld()->GetTimeSeconds() < RifleActionEndTime)
+	{
+		return;
+	}
+
+	UAnimSequence* DesiredAnimation = nullptr;
+	if (GetCharacterMovement()->IsFalling())
+	{
+		DesiredAnimation = GetVelocity().Z >= 0.0f ? RifleJumpAnimation : RifleFallAnimation;
+	}
+	else if (GetVelocity().SizeSquared2D() > FMath::Square(10.0f))
+	{
+		DesiredAnimation = SelectRifleMovementAnimation();
+	}
+	else
+	{
+		DesiredAnimation = RifleIdleAnimation;
+	}
+
+	PlayRifleAnimation(DesiredAnimation, true);
+}
+
+void ACWSPlayerCharacter::PlayRifleAnimation(UAnimSequence* Animation, const bool bLooping, const float PlayRate)
+{
+	if (!Animation || CurrentRifleAnimation == Animation)
+	{
+		return;
+	}
+
+	GetMesh()->PlayAnimation(Animation, bLooping);
+	if (UAnimSingleNodeInstance* SingleNodeInstance = GetMesh()->GetSingleNodeInstance())
+	{
+		SingleNodeInstance->SetPlayRate(PlayRate);
+	}
+	CurrentRifleAnimation = Animation;
+}
+
+void ACWSPlayerCharacter::PlayRifleAction(UAnimSequence* Animation, const float Duration)
+{
+	if (!Animation || !GetWorld())
+	{
+		return;
+	}
+
+	CurrentRifleAnimation = nullptr;
+	const float SafeDuration = FMath::Max(Duration, KINDA_SMALL_NUMBER);
+	const float PlayRate = FMath::Max(Animation->GetPlayLength() / SafeDuration, KINDA_SMALL_NUMBER);
+	PlayRifleAnimation(Animation, false, PlayRate);
+	RifleActionEndTime = GetWorld()->GetTimeSeconds() + SafeDuration;
+}
+
+UAnimSequence* ACWSPlayerCharacter::SelectRifleMovementAnimation() const
+{
+	if (RifleJogAnimations.Num() != 8)
+	{
+		return RifleIdleAnimation;
+	}
+
+	const FVector Direction = GetVelocity().GetSafeNormal2D();
+	const float ForwardAmount = FVector::DotProduct(GetActorForwardVector(), Direction);
+	const float RightAmount = FVector::DotProduct(GetActorRightVector(), Direction);
+	const float DirectionDegrees = FMath::RadiansToDegrees(FMath::Atan2(RightAmount, ForwardAmount));
+	const int32 DirectionIndex = FMath::FloorToInt((DirectionDegrees + 22.5f + 360.0f) / 45.0f) % 8;
+	return RifleJogAnimations[DirectionIndex];
 }
 
 void ACWSPlayerCharacter::RestartLevel(const FInputActionValue& Value)

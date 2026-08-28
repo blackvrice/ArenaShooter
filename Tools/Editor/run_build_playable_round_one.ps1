@@ -36,7 +36,6 @@ try {
             -nop4 `
             -nosplash `
             -NoLoadStartupPackages `
-            -nothreading `
             -nullrhi `
             -DDC=Warm `
             -EnablePlugins=PythonScriptPlugin `

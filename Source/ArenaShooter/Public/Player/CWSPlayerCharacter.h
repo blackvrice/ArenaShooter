@@ -8,9 +8,11 @@
 class UCameraComponent;
 class UCWSHealthComponent;
 class UCWSHitscanWeaponComponent;
+class UAnimSequence;
 class UInputAction;
 class UInputMappingContext;
 class USpringArmComponent;
+class UStaticMeshComponent;
 
 UCLASS(Blueprintable)
 class ARENASHOOTER_API ACWSPlayerCharacter : public ACharacter
@@ -21,6 +23,7 @@ public:
 	ACWSPlayerCharacter();
 
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 	UFUNCTION(BlueprintPure, Category = "Player")
@@ -37,6 +40,10 @@ private:
 	void Fire(const FInputActionValue& Value);
 	void Reload(const FInputActionValue& Value);
 	void RestartLevel(const FInputActionValue& Value);
+	void UpdateRifleAnimation();
+	void PlayRifleAnimation(UAnimSequence* Animation, bool bLooping, float PlayRate = 1.0f);
+	void PlayRifleAction(UAnimSequence* Animation, float Duration);
+	UAnimSequence* SelectRifleMovementAnimation() const;
 
 	UFUNCTION()
 	void HandleDeath(AActor* DeadActor);
@@ -52,6 +59,30 @@ private:
 
 	UPROPERTY(VisibleAnywhere, Category = "Player")
 	TObjectPtr<UCWSHitscanWeaponComponent> WeaponComponent;
+
+	UPROPERTY(VisibleAnywhere, Category = "Weapon")
+	TObjectPtr<UStaticMeshComponent> WeaponMesh;
+
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> RifleIdleAnimation;
+
+	UPROPERTY()
+	TArray<TObjectPtr<UAnimSequence>> RifleJogAnimations;
+
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> RifleJumpAnimation;
+
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> RifleFallAnimation;
+
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> RifleFireAnimation;
+
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> RifleReloadAnimation;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimSequence> CurrentRifleAnimation;
 
 	UPROPERTY()
 	TObjectPtr<UInputMappingContext> DefaultMappingContext;
@@ -79,4 +110,6 @@ private:
 
 	UPROPERTY()
 	TObjectPtr<UInputAction> RestartAction;
+
+	float RifleActionEndTime = 0.0f;
 };
