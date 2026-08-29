@@ -45,8 +45,11 @@ ACWSPlayerCharacter::ACWSPlayerCharacter()
 
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(RootComponent);
-	CameraBoom->TargetArmLength = 400.0f;
+	CameraBoom->TargetArmLength = 300.0f;
+	CameraBoom->SocketOffset = FVector(0.0f, 70.0f, 65.0f);
 	CameraBoom->bUsePawnControlRotation = true;
+	CameraBoom->bEnableCameraLag = true;
+	CameraBoom->CameraLagSpeed = 14.0f;
 
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
@@ -136,6 +139,10 @@ void ACWSPlayerCharacter::BeginPlay()
 	if (ReloadAction)
 	{
 		CombatMappingContext->MapKey(ReloadAction, EKeys::RightMouseButton);
+	}
+	if (MouseLookAction)
+	{
+		CombatMappingContext->MapKey(MouseLookAction, EKeys::Mouse2D);
 	}
 	CombatMappingContext->MapKey(RestartAction, EKeys::Enter);
 
