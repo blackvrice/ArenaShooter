@@ -8,6 +8,7 @@
 class UCWSHealthComponent;
 class UAnimSequenceBase;
 class UPointLightComponent;
+class USkeletalMesh;
 class UStaticMeshComponent;
 
 UCLASS(Blueprintable)
@@ -20,6 +21,7 @@ public:
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
 	virtual bool TryAttack(AActor* TargetActor);
@@ -71,6 +73,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy|Presentation")
 	bool HasArchetypePresentation() const { return bArchetypePresentationReady; }
 
+	UFUNCTION(BlueprintPure, Category = "Enemy|Presentation")
+	FString GetVisualMeshPath() const;
+
 protected:
 	UFUNCTION()
 	void HandleHealthChanged(
@@ -100,6 +105,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
 	TObjectPtr<UAnimSequenceBase> HitReactionAnimation;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Animation")
+	TObjectPtr<UAnimSequenceBase> IdleAnimation;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Animation")
+	TObjectPtr<UAnimSequenceBase> MoveAnimation;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enemy|Feedback")
 	TObjectPtr<UAnimSequenceBase> AttackAnimation;
 
@@ -116,10 +127,22 @@ protected:
 	TObjectPtr<UPointLightComponent> ArchetypeLight;
 
 	bool PlayAttackAnimation();
+	void ConfigureEnemyVisualProfile(
+		USkeletalMesh* MeshAsset,
+		UAnimSequenceBase* IdleAsset,
+		UAnimSequenceBase* MoveAsset,
+		UAnimSequenceBase* AttackAsset,
+		UAnimSequenceBase* HitReactionAsset,
+		UAnimSequenceBase* DeathAsset,
+		const FVector& RelativeLocation,
+		const FVector& RelativeScale);
 
 private:
 	void FinishHitReaction();
+	void PlayLoopingAnimation(UAnimSequenceBase* Animation);
+	bool PlayActionAnimation(UAnimSequenceBase* Animation);
 	void PlayFeedbackAnimation(UAnimSequenceBase* Animation);
+	void UpdateLocomotionAnimation();
 	bool SpawnDeathEffect();
 
 	float NextAllowedAttackTime = 0.0f;
@@ -128,6 +151,8 @@ private:
 	int32 AttackAnimationCount = 0;
 	int32 AttackSoundPlayCount = 0;
 	int32 DeathEffectSpawnCount = 0;
+	TObjectPtr<UAnimSequenceBase> CurrentLoopingAnimation;
+	float ActionAnimationEndTime = 0.0f;
 	bool bHitReactionActive = false;
 	bool bDeathAnimationPlayed = false;
 	bool bArchetypePresentationReady = false;

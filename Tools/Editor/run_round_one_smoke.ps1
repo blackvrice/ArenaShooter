@@ -12,6 +12,7 @@ $logFile = Join-Path $projectRoot "Saved\Logs\$logFileName"
 $smokeFlag = if ($AllRounds) { "-CWSAllRoundsSmokeTest" } else { "-CWSRoundOneSmokeTest" }
 $successMarker = if ($AllRounds) { "CWS_ALL_ROUNDS_SMOKE_SUCCESS" } else { "CWS_ROUND_ONE_SMOKE_SUCCESS" }
 $failureMarker = if ($AllRounds) { "CWS_ALL_ROUNDS_SMOKE_FAILURE" } else { "CWS_ROUND_ONE_SMOKE_FAILURE" }
+. (Join-Path $PSScriptRoot "CWSStableUnreal.ps1")
 
 $openEditor = Get-CimInstance Win32_Process |
     Where-Object {
@@ -28,21 +29,22 @@ function Invoke-SmokeTest([string]$DdcGraph) {
         Remove-Item -LiteralPath $logFile
     }
 
-    & $editorCmd $projectFile `
-        "/Game/Variant_Combat/Lvl_Combat" `
-        -game `
-        -nullrhi `
-        -unattended `
-        -ReduceThreadUsage `
-        -nosound `
-        -nop4 `
-        "-DDC=$DdcGraph" `
-        $smokeFlag `
-        "-abslog=$logFile" `
-        -stdout `
-        -FullStdOutLogOutput
-
-    $script:editorExitCode = $LASTEXITCODE
+    $arguments = @(
+        "`"$projectFile`"",
+        "/Game/Variant_Combat/Lvl_Combat",
+        "-game",
+        "-nullrhi",
+        "-unattended",
+        "-ReduceThreadUsage",
+        "-nosound",
+        "-nop4",
+        "-DDC=$DdcGraph",
+        $smokeFlag,
+        "-abslog=`"$logFile`""
+    )
+    $script:editorExitCode = Invoke-CWSStableUnrealProcess `
+        -Executable $editorCmd `
+        -ArgumentList $arguments
     $script:logText = if (Test-Path -LiteralPath $logFile) {
         Get-Content -LiteralPath $logFile -Raw
     } else {

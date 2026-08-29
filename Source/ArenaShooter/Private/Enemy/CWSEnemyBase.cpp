@@ -5,21 +5,23 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/CWSHealthComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Enemy/CWSEnemyAIController.h"
 #include "Feedback/CWSCombatBurstEffect.h"
-#include "Animation/AnimInstance.h"
-#include "Animation/AnimMontage.h"
 #include "Animation/AnimSequenceBase.h"
+#include "Engine/SkeletalMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogCWSEnemyResources, Log, All);
+
 ACWSEnemyBase::ACWSEnemyBase()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 	HealthComponent = CreateDefaultSubobject<UCWSHealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->SetMaxHealth(60.0f);
@@ -77,30 +79,26 @@ ACWSEnemyBase::ACWSEnemyBase()
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	static ConstructorHelpers::FObjectFinder<USkeletalMesh> EnemyMeshAsset(
-		TEXT("/Game/Characters/Mannequins/Meshes/SKM_Quinn_Simple.SKM_Quinn_Simple"));
-	if (EnemyMeshAsset.Succeeded())
-	{
-		GetMesh()->SetSkeletalMesh(EnemyMeshAsset.Object);
-		GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -96.0f));
-		GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
-	}
-
-	static ConstructorHelpers::FClassFinder<UAnimInstance> EnemyAnimClass(
-		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/ABP_Unarmed"));
-	if (EnemyAnimClass.Succeeded())
-	{
-		GetMesh()->SetAnimInstanceClass(EnemyAnimClass.Class);
-	}
-
-	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> HitReactionAsset(
-		TEXT("/Game/Characters/Mannequins/Anims/Rifle/HitReact/MM_HitReact_Front_Lgt_01.MM_HitReact_Front_Lgt_01"));
-	HitReactionAnimation = HitReactionAsset.Object;
+		TEXT("/Game/CWSResources/Enemies/Normal/SK_NormalMinion.SK_NormalMinion"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> IdleAnimationAsset(
+		TEXT("/Game/CWSResources/Enemies/Normal/A_Normal_Idle.A_Normal_Idle"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> MoveAnimationAsset(
+		TEXT("/Game/CWSResources/Enemies/Normal/A_Normal_Move.A_Normal_Move"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> AttackAnimationAsset(
-		TEXT("/Game/Characters/Mannequins/Anims/Unarmed/Attack/MM_Attack_01.MM_Attack_01"));
-	AttackAnimation = AttackAnimationAsset.Object;
+		TEXT("/Game/CWSResources/Enemies/Normal/A_Normal_Attack.A_Normal_Attack"));
+	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> HitReactionAsset(
+		TEXT("/Game/CWSResources/Enemies/Normal/A_Normal_Hit.A_Normal_Hit"));
 	static ConstructorHelpers::FObjectFinder<UAnimSequenceBase> DeathAnimationAsset(
-		TEXT("/Game/Characters/Mannequins/Anims/Death/MM_Death_Front_01.MM_Death_Front_01"));
-	DeathAnimation = DeathAnimationAsset.Object;
+		TEXT("/Game/CWSResources/Enemies/Normal/A_Normal_Death.A_Normal_Death"));
+	ConfigureEnemyVisualProfile(
+		EnemyMeshAsset.Object,
+		IdleAnimationAsset.Object,
+		MoveAnimationAsset.Object,
+		AttackAnimationAsset.Object,
+		HitReactionAsset.Object,
+		DeathAnimationAsset.Object,
+		FVector(0.0f, 0.0f, -96.0f),
+		FVector(1.0f));
 }
 
 void ACWSEnemyBase::BeginPlay()
@@ -118,7 +116,8 @@ void ACWSEnemyBase::BeginPlay()
 		BandMaterial->SetVectorParameterValue(TEXT("Color"), ArchetypeColor);
 	}
 	ArchetypeLight->SetLightColor(ArchetypeColor);
-	bArchetypePresentationReady = MarkerMaterial && BandMaterial;
+	bArchetypePresentationReady = MarkerMaterial && BandMaterial && GetMesh()->GetSkeletalMeshAsset() &&
+		IdleAnimation && MoveAnimation && AttackAnimation && HitReactionAnimation && DeathAnimation;
 
 	const float MarkerScale = EnemyType == ECWSEnemyType::Fast
 		? 0.14f
@@ -131,6 +130,25 @@ void ACWSEnemyBase::BeginPlay()
 	LastObservedHealth = HealthComponent->GetCurrentHealth();
 	HealthComponent->OnHealthChanged.AddDynamic(this, &ACWSEnemyBase::HandleHealthChanged);
 	HealthComponent->OnDeath.AddDynamic(this, &ACWSEnemyBase::HandleDeath);
+	PlayLoopingAnimation(IdleAnimation);
+
+	UE_LOG(
+		LogCWSEnemyResources,
+		Display,
+		TEXT("CWS_ENEMY_RESOURCE: Type=%s Mesh=%s Idle=%s Move=%s Attack=%s Hit=%s Death=%s"),
+		*GetArchetypeLabel(),
+		*GetVisualMeshPath(),
+		*GetNameSafe(IdleAnimation),
+		*GetNameSafe(MoveAnimation),
+		*GetNameSafe(AttackAnimation),
+		*GetNameSafe(HitReactionAnimation),
+		*GetNameSafe(DeathAnimation));
+}
+
+void ACWSEnemyBase::Tick(const float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	UpdateLocomotionAnimation();
 }
 
 FLinearColor ACWSEnemyBase::GetArchetypeColor() const
@@ -165,6 +183,13 @@ FString ACWSEnemyBase::GetArchetypeLabel() const
 	}
 }
 
+FString ACWSEnemyBase::GetVisualMeshPath() const
+{
+	return GetMesh() && GetMesh()->GetSkeletalMeshAsset()
+		? GetMesh()->GetSkeletalMeshAsset()->GetPathName()
+		: FString();
+}
+
 void ACWSEnemyBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
@@ -197,25 +222,10 @@ bool ACWSEnemyBase::TryAttack(AActor* TargetActor)
 
 bool ACWSEnemyBase::PlayAttackAnimation()
 {
-	if (!AttackAnimation)
+	if (PlayActionAnimation(AttackAnimation))
 	{
-		return false;
-	}
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
-	{
-		if (AnimInstance->PlaySlotAnimationAsDynamicMontage(
-			AttackAnimation,
-			TEXT("DefaultSlot"),
-			0.04f,
-			0.12f,
-			1.0f,
-			1,
-			0.0f,
-			0.0f))
-		{
-			++AttackAnimationCount;
-			return true;
-		}
+		++AttackAnimationCount;
+		return true;
 	}
 	return false;
 }
@@ -256,28 +266,16 @@ void ACWSEnemyBase::HandleHealthChanged(
 		return;
 	}
 
-	if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+	if (PlayActionAnimation(HitReactionAnimation))
 	{
-		UAnimMontage* Montage = AnimInstance->PlaySlotAnimationAsDynamicMontage(
-			HitReactionAnimation,
-			TEXT("DefaultSlot"),
-			0.04f,
-			0.12f,
-			1.0f,
-			1,
-			0.0f,
-			0.0f);
-		if (Montage)
-		{
-			++HitReactionCount;
-			bHitReactionActive = true;
-			GetWorldTimerManager().SetTimer(
-				HitReactionTimerHandle,
-				this,
-				&ACWSEnemyBase::FinishHitReaction,
-				FMath::Min(Montage->GetPlayLength(), 0.55f),
-				false);
-		}
+		++HitReactionCount;
+		bHitReactionActive = true;
+		GetWorldTimerManager().SetTimer(
+			HitReactionTimerHandle,
+			this,
+			&ACWSEnemyBase::FinishHitReaction,
+			FMath::Min(HitReactionAnimation->GetPlayLength(), 0.55f),
+			false);
 	}
 }
 
@@ -288,9 +286,63 @@ void ACWSEnemyBase::FinishHitReaction()
 
 void ACWSEnemyBase::PlayFeedbackAnimation(UAnimSequenceBase* Animation)
 {
+	bDeathAnimationPlayed = PlayActionAnimation(Animation);
+}
+
+void ACWSEnemyBase::ConfigureEnemyVisualProfile(
+	USkeletalMesh* MeshAsset,
+	UAnimSequenceBase* IdleAsset,
+	UAnimSequenceBase* MoveAsset,
+	UAnimSequenceBase* AttackAsset,
+	UAnimSequenceBase* HitReactionAsset,
+	UAnimSequenceBase* DeathAsset,
+	const FVector& RelativeLocation,
+	const FVector& RelativeScale)
+{
+	GetMesh()->SetSkeletalMesh(MeshAsset);
+	GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	GetMesh()->SetRelativeLocation(RelativeLocation);
+	GetMesh()->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+	GetMesh()->SetRelativeScale3D(RelativeScale);
+	IdleAnimation = IdleAsset;
+	MoveAnimation = MoveAsset;
+	AttackAnimation = AttackAsset;
+	HitReactionAnimation = HitReactionAsset;
+	DeathAnimation = DeathAsset;
+}
+
+void ACWSEnemyBase::PlayLoopingAnimation(UAnimSequenceBase* Animation)
+{
+	if (!Animation || CurrentLoopingAnimation == Animation)
+	{
+		return;
+	}
+	GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	GetMesh()->PlayAnimation(Animation, true);
+	CurrentLoopingAnimation = Animation;
+}
+
+bool ACWSEnemyBase::PlayActionAnimation(UAnimSequenceBase* Animation)
+{
+	if (!Animation || !GetWorld())
+	{
+		return false;
+	}
 	GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	GetMesh()->PlayAnimation(Animation, false);
-	bDeathAnimationPlayed = true;
+	CurrentLoopingAnimation = nullptr;
+	ActionAnimationEndTime = GetWorld()->GetTimeSeconds() + Animation->GetPlayLength();
+	return true;
+}
+
+void ACWSEnemyBase::UpdateLocomotionAnimation()
+{
+	if (!HealthComponent || !HealthComponent->IsAlive() || !GetWorld() || bHitReactionActive ||
+		GetWorld()->GetTimeSeconds() < ActionAnimationEndTime)
+	{
+		return;
+	}
+	PlayLoopingAnimation(GetVelocity().SizeSquared2D() > FMath::Square(10.0f) ? MoveAnimation : IdleAnimation);
 }
 
 bool ACWSEnemyBase::SpawnDeathEffect()

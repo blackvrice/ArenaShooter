@@ -680,6 +680,9 @@ void ACWSGameMode::RunVisualPolishScreenshotStep()
 		ArenaVisualDirector->GetCenterRingSegmentCount() == 24 && ArenaVisualDirector->GetCoverCount() == 8 &&
 		NormalEnemy->HasArchetypePresentation() && FastEnemy->HasArchetypePresentation() &&
 		TankEnemy->HasArchetypePresentation() &&
+		NormalEnemy->GetVisualMeshPath() == TEXT("/Game/CWSResources/Enemies/Normal/SK_NormalMinion.SK_NormalMinion") &&
+		FastEnemy->GetVisualMeshPath() == TEXT("/Game/CWSResources/Enemies/Fast/SK_FastMinion.SK_FastMinion") &&
+		TankEnemy->GetVisualMeshPath() == TEXT("/Game/CWSResources/Enemies/Tank/SK_Tank.SK_Tank") &&
 		!NormalEnemy->GetArchetypeColor().Equals(FastEnemy->GetArchetypeColor()) &&
 		!FastEnemy->GetArchetypeColor().Equals(TankEnemy->GetArchetypeColor()) &&
 		!NormalEnemy->GetArchetypeColor().Equals(TankEnemy->GetArchetypeColor());
@@ -1250,6 +1253,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 		{
 			bSmokeSawNormalPresentation = bSmokeSawNormalPresentation ||
 				(Enemy->HasArchetypePresentation() &&
+				Enemy->GetVisualMeshPath() == TEXT("/Game/CWSResources/Enemies/Normal/SK_NormalMinion.SK_NormalMinion") &&
 				Enemy->GetArchetypeColor().Equals(FLinearColor(0.05f, 0.95f, 0.35f)));
 		}
 
@@ -1264,6 +1268,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 					FMath::IsNearlyEqual(FastEnemy->GetAttackDamage(), 8.0f) &&
 					FMath::IsNearlyEqual(FastEnemy->GetAttackInterval(), 0.65f);
 				bSmokeSawFastPresentation = FastEnemy->HasArchetypePresentation() &&
+					FastEnemy->GetVisualMeshPath() == TEXT("/Game/CWSResources/Enemies/Fast/SK_FastMinion.SK_FastMinion") &&
 					FastEnemy->GetArchetypeColor().Equals(FLinearColor(1.0f, 0.24f, 0.03f));
 			}
 			else if (ACWSTankEnemy* TankEnemy = Cast<ACWSTankEnemy>(Enemy))
@@ -1275,6 +1280,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 					FMath::IsNearlyEqual(TankEnemy->GetAttackDamage(), 18.0f) &&
 					FMath::IsNearlyEqual(TankEnemy->GetAttackInterval(), 1.4f);
 				bSmokeSawTankPresentation = TankEnemy->HasArchetypePresentation() &&
+					TankEnemy->GetVisualMeshPath() == TEXT("/Game/CWSResources/Enemies/Tank/SK_Tank.SK_Tank") &&
 					TankEnemy->GetArchetypeColor().Equals(FLinearColor(0.05f, 0.35f, 1.0f));
 			}
 
@@ -1292,6 +1298,8 @@ void ACWSGameMode::RunCombatSmokeStep()
 			{
 				bSmokeSawDedicatedBoss = true;
 				bSmokeSawBossMaxHealth = FMath::IsNearlyEqual(Health->GetMaxHealth(), 1200.0f);
+				bSmokeSawBossPresentation = Boss->HasArchetypePresentation() &&
+					Boss->GetVisualMeshPath() == TEXT("/Game/CWSResources/Enemies/Normal/SK_NormalMinion.SK_NormalMinion");
 				if ((!bSmokeSawBossGroundSlamDamage || !bSmokeSawBossShockwaveDamage) &&
 					PlayerCharacter && PlayerHealth.IsValid())
 				{
@@ -1463,6 +1471,7 @@ void ACWSGameMode::RunCombatSmokeStep()
 				bSmokeSawFastEnemy && bSmokeSawFastStats && bSmokeSawTankEnemy && bSmokeSawTankStats &&
 				bSmokeSawArenaVisuals && bSmokeSawNormalPresentation &&
 				bSmokeSawFastPresentation && bSmokeSawTankPresentation &&
+				bSmokeSawBossPresentation &&
 				bSmokeSawPreparingPhase && bSmokeSawActivePhase && bSmokeSawRoundClearedPhase && bSmokeSawCompletedPhase &&
 				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
 				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&

@@ -6,6 +6,7 @@ $editorCmd = "C:\Program Files\Epic Games\UE_5.6\Engine\Binaries\Win64\UnrealEdi
 $logFile = Join-Path $projectRoot "Saved\Logs\CWSVisualPolishScreenshot.log"
 $screenshotFile = Join-Path $projectRoot "Saved\Screenshots\CWSArenaVisualPolish.png"
 $successMarker = "CWS_VISUAL_POLISH_SCREENSHOT_SUCCESS"
+. (Join-Path $PSScriptRoot "CWSStableUnreal.ps1")
 
 $openEditor = Get-CimInstance Win32_Process |
     Where-Object { $_.Name -eq "UnrealEditor.exe" -and $_.CommandLine -like "*ArenaShooter.uproject*" }
@@ -14,23 +15,27 @@ if ($openEditor) { throw "ArenaShooter is open in Unreal Editor. Close it before
 function Invoke-VisualPolishScreenshot([string]$DdcGraph) {
     if (Test-Path -LiteralPath $logFile) { Remove-Item -LiteralPath $logFile }
     if (Test-Path -LiteralPath $screenshotFile) { Remove-Item -LiteralPath $screenshotFile }
-    & $editorCmd $projectFile `
-        "/Game/Variant_Combat/Lvl_Combat" `
-        -game `
-        -RenderOffscreen `
-        -ResX=1280 `
-        -ResY=720 `
-        -unattended `
-        -NoLoadStartupPackages `
-        -nosound `
-        -nop4 `
-        "-DDC=$DdcGraph" `
-        "-ExecCmds=DisableAllScreenMessages" `
-        -CWSVisualPolishScreenshotTest `
-        "-abslog=$logFile" `
-        -stdout `
-        -FullStdOutLogOutput
-    $script:editorExitCode = $LASTEXITCODE
+    $arguments = @(
+        "`"$projectFile`"",
+        "/Game/Variant_Combat/Lvl_Combat",
+        "-game",
+        "-RenderOffscreen",
+        "-ResX=1280",
+        "-ResY=720",
+        "-unattended",
+        "-NoLoadStartupPackages",
+        "-ReduceThreadUsage",
+        "-d3d11",
+        "-nosound",
+        "-nop4",
+        "-DDC=$DdcGraph",
+        "-ExecCmds=DisableAllScreenMessages",
+        "-CWSVisualPolishScreenshotTest",
+        "-abslog=`"$logFile`""
+    )
+    $script:editorExitCode = Invoke-CWSStableUnrealProcess `
+        -Executable $editorCmd `
+        -ArgumentList $arguments
     $script:logText = if (Test-Path -LiteralPath $logFile) { Get-Content -LiteralPath $logFile -Raw } else { "" }
 }
 

@@ -3,6 +3,7 @@
 #include "Audio/CWSCombatSound.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CWSHealthComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -18,8 +19,13 @@ ACWSBossEnemy::ACWSBossEnemy()
 	AttackRange = GroundSlamRadius;
 	AttackInterval = 2.4f;
 	GetCapsuleComponent()->InitCapsuleSize(60.0f, 130.0f);
+
+	// Keep the base enemy's verified lightweight visual profile until the dedicated
+	// boss mesh can be rebuilt. Loading a corrupt derived-data payload here crashes
+	// the editor before the map opens, so size and the boss marker provide the
+	// archetype distinction without touching that payload.
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -130.0f));
-	GetMesh()->SetRelativeScale3D(FVector(1.35f));
+	GetMesh()->SetRelativeScale3D(FVector(1.65f));
 }
 
 void ACWSBossEnemy::BeginPlay()

@@ -146,6 +146,7 @@ private:
 	bool bSmokeSawNormalPresentation = false;
 	bool bSmokeSawFastPresentation = false;
 	bool bSmokeSawTankPresentation = false;
+	bool bSmokeSawBossPresentation = false;
 	bool bSmokeLoggedArenaPresentation = false;
 	bool bSmokeLoggedEnemyPresentation = false;
 	bool bSmokeLoggedEnemyArchetypes = false;
