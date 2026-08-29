@@ -244,7 +244,7 @@ void ACWSPlayerCharacter::Fire(const FInputActionValue& Value)
 	{
 		if (WeaponComponent->TryFire())
 		{
-			PlayRifleAction(RifleFireAnimation, WeaponComponent->GetFireInterval());
+			PlayRifleFireAction();
 		}
 		else if (WeaponComponent->IsReloading() && CurrentRifleAnimation != RifleReloadAnimation)
 		{
@@ -301,6 +301,29 @@ void ACWSPlayerCharacter::PlayRifleAnimation(UAnimSequence* Animation, const boo
 		SingleNodeInstance->SetPlayRate(PlayRate);
 	}
 	CurrentRifleAnimation = Animation;
+}
+
+void ACWSPlayerCharacter::PlayRifleFireAction()
+{
+	if (!RifleFireAnimation || !GetWorld())
+	{
+		return;
+	}
+
+	const float CurrentTime = GetWorld()->GetTimeSeconds();
+	if (CurrentRifleAnimation == RifleFireAnimation && CurrentTime < RifleActionEndTime)
+	{
+		return;
+	}
+
+	// MM_Rifle_Fire is a full-body one-shot animation. Compressing its entire clip
+	// into the 0.15 second weapon interval and restarting it for every bullet makes
+	// the pose snap between recoil and locomotion. Let one natural recoil cycle
+	// finish while the weapon component continues to handle the actual fire rate.
+	CurrentRifleAnimation = nullptr;
+	PlayRifleAnimation(RifleFireAnimation, false);
+	const float FireInterval = WeaponComponent ? WeaponComponent->GetFireInterval() : 0.0f;
+	RifleActionEndTime = CurrentTime + FMath::Max(RifleFireAnimation->GetPlayLength(), FireInterval);
 }
 
 void ACWSPlayerCharacter::PlayRifleAction(UAnimSequence* Animation, const float Duration)

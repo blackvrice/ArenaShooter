@@ -42,6 +42,7 @@ private:
 	void RestartLevel(const FInputActionValue& Value);
 	void UpdateRifleAnimation();
 	void PlayRifleAnimation(UAnimSequence* Animation, bool bLooping, float PlayRate = 1.0f);
+	void PlayRifleFireAction();
 	void PlayRifleAction(UAnimSequence* Animation, float Duration);
 	UAnimSequence* SelectRifleMovementAnimation() const;
 
