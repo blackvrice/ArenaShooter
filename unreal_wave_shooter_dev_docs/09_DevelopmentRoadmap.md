@@ -4,17 +4,18 @@
 
 ### Week 1
 
-- 프로젝트 생성
-- Third Person 기반 Player 구성
-- 중앙 아레나 맵 Blockout 제작
+- [x] 프로젝트 생성
+- [x] Third Person 기반 네이티브 Player 구성
+- [x] 중앙 아레나 맵 Blockout 제작
 - [x] 8방향 + 중앙 SpawnPoint 배치
+- [x] PlayerStart + NavMesh Bounds 배치
 
 ### Week 2
 
-- HealthComponent 구현
-- Projectile/Weapon 구현
-- EnemyBase 구현
-- 적 피격/사망 처리
+- [x] HealthComponent 구현
+- [x] Hitscan Weapon 구현
+- [x] EnemyBase + AIController 구현
+- [x] 적 피격/사망 처리
 
 ### Week 3
 
@@ -25,39 +26,40 @@
 
 ### Week 4
 
-- Boss Round 구현
-- UI HUD 구현
-- 보급/회복 아이템 구현
-- 게임 오버/클리어 처리
+- [x] Boss Round 구현
+- [x] 기본 Canvas HUD 구현
+- [x] 보급/회복 아이템 구현
+- [x] 게임 오버/클리어 상태 표시
+- [x] 플레이어 사망 시 웨이브 정지와 Enter 레벨 재시작
 
 ## 2. 2차 목표: 포트폴리오 완성도
 
 ### Week 5
 
-- 맵 디테일링
+- [x] 중앙 전투 링과 방향 게이트 비콘
 - 무료 에셋 적용
-- Material 통일
-- 엄폐물 배치 조정
+- [x] 런타임 시각 레이어 Material 통일
+- [x] 내비게이션을 반영하는 엄폐물 배치
 
 ### Week 6
 
-- 적 애니메이션 적용
-- 피격/사망 VFX
-- 발사/피격/폭발 사운드
-- 라운드 경고 UI
+- [x] 적 피격/사망 애니메이션 적용
+- [x] 피격/사망 네이티브 버스트 VFX
+- [x] 적 공격 애니메이션과 발사/피격/폭발 사운드
+- [x] 라운드 준비/시작/클리어 경고 UI
 
 ### Week 7
 
-- 밸런싱
-- 버그 수정
-- 패키징
-- 플레이 영상 촬영
+- [x] Round 1~5 탄약 경제와 실제 사격 밸런싱
+- [x] 자동화 DDC/Oodle 오류 대응과 전체 회귀검증
+- [x] Win64 Shipping 출시 후보 패키징과 배포 ZIP 생성
+- [x] 플레이 영상 촬영 시나리오와 시각 QA 체크리스트
 
 ### Week 8
 
-- GitHub README 작성
-- 기술 문서 정리
-- 포트폴리오 페이지 작성
+- [x] GitHub README 작성
+- [x] 기술 문서 정리
+- [x] 포트폴리오 페이지 작성
 
 ## 3. 우선순위
 
@@ -87,3 +89,26 @@
 - 보스 처치 시 클리어
 - UI 표시
 - 패키징 가능
+
+## 5. 현재 검증 상태와 다음 목표
+
+- [x] 에디터 Development 빌드
+- [x] `Lvl_Combat` Map Check 오류 0
+- [x] 실제 히트스캔 사격으로 적 피격/사망 검증
+- [x] Round 1 적 8마리 생성, NavMesh 추적, 사망, 라운드 클리어 검증
+- [x] 플레이어 사망, 웨이브 정지, 현재 레벨 재시작 검증
+- [x] Round 1~5 전체 스폰/클리어와 최종 게임 클리어 자동 검증
+- [x] `IMC_Combat`의 누락된 `IA_Dash` 손상 참조 제거 및 14개 매핑 재검사
+- [x] 전용 Boss 클래스, 3단계 페이즈, Ground Slam/Shockwave 패턴
+- [x] Boss 체력/페이즈 HUD와 `OnBossSpawned` 이벤트
+- [x] Boss 생성·페이즈·패턴 피해·Round 5 클리어 런타임 자동 검증
+- [x] 60발 탄창, 예비 탄약, 1.2초 재장전과 HUD 상태 표시
+- [x] Round 1~4 탄약/체력 보급 생성·수집 런타임 자동 검증
+- [x] Fast/Tank 전용 적 클래스와 Round 2~5 타입별 구성
+- [x] Fast/Tank 클래스 생성·능력치·Round 1~5 클리어 런타임 자동 검증
+- [x] 라운드 준비/전투/클리어/완료 페이즈와 중앙 경고 HUD, 오프스크린 스크린샷 검증
+- [x] 히트스캔 충돌 버스트, 적 피격/사망 애니메이션과 사망 버스트, 오프스크린 스크린샷 검증
+- [x] Round 1~5 실제 히트스캔 404발 완주와 70% 명중률 탄약 예산 검증
+- [x] 적 공격 애니메이션과 발사/피격/폭발 전투 SFX
+- [x] 맵 디테일링, 엄폐물 배치와 Normal/Fast/Tank 시각적 타입 구분
+- [x] Win64 Shipping Build/Cook/Stage/Pak/Archive와 패키지 전체 라운드 실행 테스트

@@ -42,21 +42,22 @@ C++ 또는 Blueprint에서 `AI Move To` 기반으로 구현한다.
 
 ### Fast
 
-- 이동속도 높음
-- 체력 낮음
+- `ACWSFastEnemy`: 체력 35, 이동속도 520
+- 공격력 8, 공격 간격 0.65초
 - 플레이어 측면 압박용
 
 ### Tank
 
-- 이동속도 낮음
-- 체력 높음
+- `ACWSTankEnemy`: 체력 180, 이동속도 230
+- 공격력 18, 공격 간격 1.4초
 - 중앙으로 천천히 압박
 
 ### Boss
 
 - 5라운드 중앙 출현
-- 패턴 공격
-- 주기적으로 잡몹 소환 가능
+- 체력 66%/33%에서 2·최종 페이즈 전환
+- Ground Slam과 넉백 Shockwave 패턴
+- 페이즈가 진행될수록 이동속도와 공격 주기 강화
 
 ## 5. 보스 패턴 후보
 
@@ -77,6 +78,22 @@ Round 5 시작
 → 일정 체력마다 보조 적 스폰
 → 보스 처치 시 게임 클리어
 ```
+
+### 현재 구현
+
+- `ACWSBossEnemy` 체력 1200, 이동속도 `260 → 320 → 380`
+- Phase 1은 Ground Slam, Phase 2는 Ground Slam/Shockwave 교대, Final Phase는 빠른 Shockwave 사용
+- `OnBossPhaseChanged`, `OnBossPatternExecuted`, WaveManager의 `OnBossSpawned` 이벤트 제공
+- 잡몹 소환, 전용 애니메이션/VFX/SFX는 후속 확장 항목
+
+### 현재 라운드 조합
+
+- Round 1: Normal 8
+- Round 2: Normal 8 + Fast 8
+- Round 3: Normal 8 + Fast 8 + Tank 8
+- Round 4: Normal 16 + Fast 10 + Tank 8
+- Round 5: Normal 4 + Fast 6 + Tank 4 + Boss 1
+- 헤드리스 전체 라운드 스모크에서 Fast/Tank 클래스 생성과 위 능력치, Boss 패턴, Round 1~5 클리어를 검증했다.
 
 ## 7. Behavior Tree 확장 방향
 

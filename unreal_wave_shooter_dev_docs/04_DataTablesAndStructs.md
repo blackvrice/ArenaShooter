@@ -61,7 +61,7 @@ struct FCWSEnemyDataRow : public FTableRowBase
 
 ```cpp
 USTRUCT(BlueprintType)
-struct FCWSSpawnGroup
+struct FCWSRoundSpawnGroup
 {
     GENERATED_BODY()
 
@@ -76,14 +76,17 @@ struct FCWSSpawnGroup
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float SpawnInterval = 1.0f;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly)
+    bool bUseBossClass = false;
 };
 ```
 
-## 4. Round Data Row
+## 4. Round Definition
 
 ```cpp
 USTRUCT(BlueprintType)
-struct FCWSRoundDataRow : public FTableRowBase
+struct FCWSRoundDefinition
 {
     GENERATED_BODY()
 
@@ -91,7 +94,7 @@ struct FCWSRoundDataRow : public FTableRowBase
     int32 RoundNumber = 1;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    TArray<FCWSSpawnGroup> SpawnGroups;
+    TArray<FCWSRoundSpawnGroup> SpawnGroups;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
     float PreRoundDelay = 3.0f;
@@ -100,7 +103,7 @@ struct FCWSRoundDataRow : public FTableRowBase
     float PostRoundDelay = 5.0f;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly)
-    bool bIsBossRound = false;
+    bool bBossRound = false;
 };
 ```
 
@@ -109,7 +112,7 @@ struct FCWSRoundDataRow : public FTableRowBase
 아래 값은 DataTable CSV로 변환하거나, Unreal Editor에서 직접 입력해도 된다.
 
 ```csv
-Name,RoundNumber,bIsBossRound,PreRoundDelay,PostRoundDelay,Description
+Name,RoundNumber,bBossRound,PreRoundDelay,PostRoundDelay,Description
 Round_01,1,false,3.0,5.0,"북/남 기본 웨이브"
 Round_02,2,false,3.0,5.0,"동서남북 4방향 웨이브"
 Round_03,3,false,3.0,5.0,"4방향 + 북동/남서"
@@ -119,58 +122,58 @@ Round_05,5,true,5.0,0.0,"중앙 보스 출현"
 
 ## 6. 라운드별 SpawnGroup 권장값
 
-현재 C++ 초기 구현은 아래 방향과 Count를 기본값으로 사용한다. `Default` 그룹은 `DefaultEnemyClass`, `Boss slot` 그룹은 `BossEnemyClass`를 사용한다. 아직 두 슬롯 모두 `BP_CombatEnemy`로 지정되어 있다.
+현재 C++ 구현은 아래 방향, EnemyType, Count를 기본값으로 사용한다. Normal/Fast/Tank/Boss는 각각 `ACWSEnemyBase`/`ACWSFastEnemy`/`ACWSTankEnemy`/`ACWSBossEnemy`로 해석된다. Round 5의 Center 한 개만 Boss 슬롯이다.
 
 ### Round 1
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Default | 4 | 1.2 |
-| South | Default | 4 | 1.2 |
+| North | Normal | 4 | 1.2 |
+| South | Normal | 4 | 1.2 |
 
 ### Round 2
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Default | 4 | 1.0 |
-| South | Default | 4 | 1.0 |
-| East | Default | 4 | 1.0 |
-| West | Default | 4 | 1.0 |
+| North | Normal | 4 | 1.0 |
+| South | Normal | 4 | 1.0 |
+| East | Fast | 4 | 1.0 |
+| West | Fast | 4 | 1.0 |
 
 ### Round 3
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Default | 4 | 0.9 |
-| South | Default | 4 | 0.9 |
-| East | Default | 4 | 0.9 |
-| West | Default | 4 | 0.9 |
-| NorthEast | Default | 4 | 1.1 |
-| SouthWest | Default | 4 | 1.1 |
+| North | Tank | 4 | 0.9 |
+| South | Tank | 4 | 0.9 |
+| East | Normal | 4 | 0.9 |
+| West | Normal | 4 | 0.9 |
+| NorthEast | Fast | 4 | 1.1 |
+| SouthWest | Fast | 4 | 1.1 |
 
 ### Round 4
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| North | Default | 5 | 0.8 |
-| South | Default | 5 | 0.8 |
-| East | Default | 4 | 0.8 |
-| West | Default | 4 | 0.8 |
-| NorthEast | Default | 4 | 1.0 |
-| NorthWest | Default | 4 | 1.0 |
-| SouthEast | Default | 4 | 1.0 |
-| SouthWest | Default | 4 | 1.0 |
+| North | Fast | 5 | 0.8 |
+| South | Fast | 5 | 0.8 |
+| East | Tank | 4 | 0.8 |
+| West | Tank | 4 | 0.8 |
+| NorthEast | Normal | 4 | 1.0 |
+| NorthWest | Normal | 4 | 1.0 |
+| SouthEast | Normal | 4 | 1.0 |
+| SouthWest | Normal | 4 | 1.0 |
 
 ### Round 5
 
 | Direction | EnemyType | Count | Interval |
 |---|---|---:|---:|
-| Center | Boss slot | 1 | 0.1 |
-| North | Default | 3 | 1.2 |
-| South | Default | 3 | 1.2 |
-| East | Default | 2 | 1.2 |
-| West | Default | 2 | 1.2 |
-| NorthEast | Default | 1 | 1.5 |
-| NorthWest | Default | 1 | 1.5 |
-| SouthEast | Default | 1 | 1.5 |
-| SouthWest | Default | 1 | 1.5 |
+| Center | Boss | 1 | 0.1 |
+| North | Fast | 3 | 1.2 |
+| South | Fast | 3 | 1.2 |
+| East | Tank | 2 | 1.2 |
+| West | Tank | 2 | 1.2 |
+| NorthEast | Normal | 1 | 1.5 |
+| NorthWest | Normal | 1 | 1.5 |
+| SouthEast | Normal | 1 | 1.5 |
+| SouthWest | Normal | 1 | 1.5 |

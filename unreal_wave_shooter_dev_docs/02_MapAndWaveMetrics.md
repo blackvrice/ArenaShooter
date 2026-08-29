@@ -2,7 +2,7 @@
 
 ## 1. 현재 기준
 
-이 문서는 2026-07-12에 저장된 `/Game/Variant_Combat/Lvl_Combat`의 수동 블록아웃을 기준으로 한다. 현재 맵의 저장된 액터 배치가 좌표와 크기의 기준이며, 첨부 PPTX와 `Tools/Editor/build_cws_blockout.py`는 이전 중앙 거점 설계의 참고 자료로만 사용한다.
+이 문서는 2026-07-19에 저장된 `/Game/Variant_Combat/Lvl_Combat`의 수동 블록아웃과 2026-08-15에 검증한 Round 1~5 전투 구성을 기준으로 한다. 현재 맵의 저장된 액터 배치가 좌표와 크기의 기준이며, 첨부 PPTX와 `Tools/Editor/build_cws_blockout.py`는 이전 중앙 거점 설계의 참고 자료로만 사용한다.
 
 Unreal Engine 기준 `1 uu = 1 cm`다. 따라서 `10,000 uu = 100 m`다.
 
@@ -155,28 +155,34 @@ X- ------------------------------------------------------------- X+
 | Sky Atmosphere | `Lighting` 폴더에 배치됨 |
 | Exponential Height Fog | `Lighting` 폴더에 배치됨 |
 | Recast NavMesh 데이터 | 외부 액터로 존재 |
-| NavMesh Bounds Volume | 미배치 |
+| NavMesh Bounds Volume | `CWS_NavMeshBounds`, 중심 `(0, 0, 1,000)`, 스케일 `(55, 55, 10)` |
+| PlayerStart | `CWS_PlayerStart`, `(0, 1,200, 450)` |
+| GameMode | 네이티브 `ACWSGameMode` |
+| Player | 네이티브 `ACWSPlayerCharacter`, 체력/히트스캔 무기와 탄창·예비 탄약 포함 |
+| Enemy | 네이티브 `ACWSEnemyBase`/`ACWSFastEnemy`/`ACWSTankEnemy`/`ACWSBossEnemy`, NavMesh 추적 및 근접·패턴 공격 |
 | `CWS_WaveManager` | 맵에 배치됨, 게임 시작 시 자동 실행 |
 | 방향별 `CWS_SpawnPoint` | 8방향 + 중앙, 총 9개 배치됨 |
+| 런타임 시각 레이어 | 중앙 링 24조각, 충돌 엄폐물 8개, 방향 게이트 비콘 8개 |
 
-## 6. 아직 맵에 없는 전투 요소
+## 6. 후속 전투 요소
 
-아래 항목은 블루프린트 에셋 또는 이전 설계에는 존재하지만 현재 저장된 `Lvl_Combat`에는 배치되어 있지 않다.
+플레이 가능한 Round 1~5에 필요한 시작점, 내비게이션, 플레이어/적/무기/HUD, 라운드 보급과 적 타입 구성은 구현됐다. 아래 항목은 다음 확장 대상이다.
 
 | 항목 | 현재 상태 | 다음 결정 |
 |---|---|---|
-| PlayerStart | 미배치 | 중앙 또는 체크포인트 인근 시작 위치 결정 |
-| Fast/Tank/Boss 전용 클래스 | 미구현 | 현재는 모든 그룹이 `BP_CombatEnemy` 사용 |
-| NavMesh Bounds Volume | 미배치 | 전체 바닥과 플랫폼/경사로를 포함하도록 배치 |
-| 중앙 전투 링 | 미배치 | 유지할지 제거할지 결정 |
+| Fast/Tank 전용 클래스 | 구현 | Fast는 측면 압박, Tank는 주 방향 압박에 사용 |
+| Boss 전용 클래스 | 구현 | Round 5 Center 슬롯은 `ACWSBossEnemy` 사용 |
+| 중앙 전투 링 | 구현 | 런타임 링 24조각으로 중앙 교전 구역 표시 |
 | 보스 전용 별도 스폰 지점 | 미배치 | 현재 Round 5는 Center SpawnPoint를 보스 슬롯으로 재사용 |
-| 회복/보급 아이템 | 미배치 | 이동 동선 확정 후 배치 |
-| 일반 엄폐물 | 미배치 | 중앙 개방감과 원거리 시야를 고려해 배치 |
-| 외곽 진입 게이트 | 없음 | 폐쇄형 아레나를 유지할지 적 전용 진입구를 만들지 결정 |
+| 회복/보급 아이템 | 구현 | Round 1~4 클리어 시 플레이어 전방에 탄약/체력 보급을 교대로 생성 |
+| 일반 엄폐물 | 구현 | 충돌·내비게이션을 반영하는 8개 블록으로 시야 분할 |
+| 외곽 진입 게이트 | 구현 | 동서남북 색상 비콘 8개로 진입 방향 표시 |
 
 ## 7. 웨이브 생성 구현
 
-`ACWSWaveManager`가 게임 시작 후 자동으로 Round 1을 준비한다. 각 라운드는 3초 준비 시간 후 방향별 `ACWSSpawnPoint`에서 적을 순차 생성하며, 생성된 적의 `OnDestroyed` 이벤트로 남은 적 수를 갱신한다. 모든 적이 제거되면 5초 후 다음 라운드를 시작한다.
+`ACWSWaveManager`가 게임 시작 후 자동으로 Round 1을 준비한다. 각 라운드는 준비 시간 후 방향별 `ACWSSpawnPoint`에서 EnemyType에 맞는 Normal/Fast/Tank/Boss 클래스를 순차 생성한다. 체력 컴포넌트의 `OnDeath`를 우선 사용하고 `OnDestroyed`를 안전망으로 사용해 남은 적 수와 라운드 클리어를 갱신한다. 모든 적이 제거되면 5초 후 다음 라운드를 시작한다.
+
+`DefaultEngine.ini`의 Recast NavMesh는 `Dynamic` 런타임 생성으로 설정했다. 2026-08-15 헤드리스 게임 스모크 테스트에서 실제 히트스캔 피격/사망, 1.2초 재장전과 예비 탄약 소비, 탄약/체력 보급 수집, Round 1 적 8마리의 NavMesh 이동과 클리어, 플레이어 사망 뒤 웨이브 정지와 레벨 재시작을 확인했다. 가속 전체 라운드 테스트에서는 `8 / 16 / 24 / 34 / 15` 스폰, Fast/Tank 전용 클래스와 능력치, Round 1~4 보급 생성, 전용 Boss 패턴과 Round 1~5 클리어를 확인했다.
 
 | 방향 | 위치 `(X, Y, Z)` |
 |---|---:|
@@ -193,16 +199,16 @@ X- ------------------------------------------------------------- X+
 | 라운드 | 일반 적 | 빠른 적 | 탱커 적 | 보스 | 총 적 수 | 배치 상태 |
 |---|---:|---:|---:|---:|---:|---|
 | 1R | 8 | 0 | 0 | 0 | 8 | North/South |
-| 2R | 12 | 4 | 0 | 0 | 16 | North/South/East/West |
-| 3R | 16 | 6 | 2 | 0 | 24 | 4방향 + NorthEast/SouthWest |
-| 4R | 22 | 8 | 4 | 0 | 34 | 전체 8방향 |
-| 5R | 8 | 4 | 2 | 1 | 15 | 전체 8방향 + Center |
+| 2R | 8 | 8 | 0 | 0 | 16 | Normal: North/South, Fast: East/West |
+| 3R | 8 | 8 | 8 | 0 | 24 | Tank: North/South, Normal: East/West, Fast: NorthEast/SouthWest |
+| 4R | 16 | 10 | 8 | 0 | 34 | Fast: North/South, Tank: East/West, Normal: 대각 4방향 |
+| 5R | 4 | 6 | 4 | 1 | 15 | Fast: North/South, Tank: East/West, Normal: 대각 4방향, Boss: Center |
 
-현재 Fast/Tank/Boss 전용 적 클래스는 없으므로 위 타입 구분은 밸런스 목표다. 런타임에서는 모든 그룹이 `BP_CombatEnemy`를 사용하며, `BossEnemyClass`를 지정하면 Round 5의 Center 그룹만 별도 클래스로 교체된다.
+Normal은 `ACWSEnemyBase`, Fast는 `ACWSFastEnemy`, Tank는 `ACWSTankEnemy`, Round 5 Center는 `ACWSBossEnemy`를 사용한다. 저장된 기존 맵의 라운드 데이터에는 기본 조합 매핑을 런타임에 적용해 에셋을 재저장하지 않아도 같은 구성이 유지된다. Boss는 체력 1200, 3단계 페이즈, Ground Slam과 넉백 Shockwave 패턴을 가진다.
 
 ## 8. 권장 체력과 데미지
 
-아래 값은 맵 배치와 독립적인 초기 밸런스 목표다. 100 m 전장에서 실제 교전 거리가 길어질 수 있으므로 플레이 테스트 후 이동속도와 추적 범위를 함께 조정한다.
+아래 값은 현재 네이티브 클래스에 적용된 밸런스다. 적 수와 능력치 조합은 유지하고, 실제 사격 완주 결과에 맞춰 탄약 경제를 조정했다.
 
 | 타입 | 체력 | 이동속도 | 공격 데미지 | 특징 |
 |---|---:|---:|---:|---|
@@ -212,13 +218,29 @@ X- ------------------------------------------------------------- X+
 | Enemy_Tank | 180 | 230 | 18 | 느리지만 단단함 |
 | Boss | 1200 | 260 | 25~35 | 패턴 공격 |
 
+### 탄약 경제 검증
+
+| 라운드 | Normal | Fast | Tank | Boss | 완벽 명중 필요 탄수 |
+|---|---:|---:|---:|---:|---:|
+| 1R | 8 | 0 | 0 | 0 | 24 |
+| 2R | 8 | 8 | 0 | 0 | 40 |
+| 3R | 8 | 8 | 8 | 0 | 104 |
+| 4R | 16 | 10 | 8 | 0 | 132 |
+| 5R | 4 | 6 | 4 | 1 | 104 |
+| 합계 | 44 | 32 | 20 | 1 | 404 |
+
+- 무기 데미지 25 기준 Normal 3발, Fast 2발, Tank 8발, Boss 48발이다.
+- 시작 탄약은 탄창 60 + 예비 360 = 420발이고 Round 1·3 탄약 보급은 각각 90발이다.
+- 총 예산 600발은 70% 명중률 필요량 578발보다 22발 많다.
+- 실제 히트스캔 자동 플레이 경로에서 97명, 404발, 빗나감 0, 종료 잔탄 196발을 확인했다.
+
 ## 9. 현재 맵 의도
 
 - 100 m 정사각 전장 중앙의 40 m 방이 긴 시야를 분할하고, 네 출입구를 중심으로 근거리 교전을 만든다.
 - 네 모서리 플랫폼과 두 방향 경사로가 반복 가능한 고저차 전투 지점을 만든다.
 - 네 변 중앙의 방이 엄폐와 실내 교전 공간을 제공하며, 중앙 방향 출입구가 전투 흐름을 다시 아레나 안쪽으로 유도한다.
 - 체크포인트는 중앙보다 북쪽에 배치되어 진행 방향을 암시한다.
-- 중앙 링, 엄폐물, 적 스폰, 아이템은 아직 확정된 현재 설계가 아니다.
+- 중앙 링, 엄폐물, 방향 비콘은 저장된 맵 액터와 분리된 네이티브 런타임 레이어여서 맵 외부 액터를 재저장하지 않고 반복 조정할 수 있다.
 
 ## 10. 유지보수 규칙
 
@@ -227,6 +249,10 @@ X- ------------------------------------------------------------- X+
 - 변 중앙 방은 `Tools/Editor/run_build_cardinal_rooms.ps1`로 재생성하거나 검사한다.
 - 중앙 방은 `Tools/Editor/run_build_central_room.ps1`로 재생성하거나 검사한다.
 - 웨이브 매니저와 9개 스폰 지점은 `Tools/Editor/run_build_wave_spawning.ps1`로 재생성하거나 검사한다.
+- PlayerStart, NavMesh Bounds, 네이티브 런타임 클래스 연결은 `Tools/Editor/run_build_playable_round_one.ps1`로 재생성하거나 검사한다.
+- Round 1 전투 흐름 검증은 `Tools/Editor/run_round_one_smoke.ps1`, 전체 라운드 검증은 같은 스크립트의 `-AllRounds` 옵션으로 실행한다.
+- 런타임 시각 레이어와 적 타입 색상은 `Tools/Editor/run_visual_polish_screenshot.ps1`로 검사한다.
+- 실제 사격 탄약 경제는 `Tools/Editor/run_balance_combat_test.ps1`로 검사한다.
 - 자동화 스크립트를 다시 사용할 경우 10,000 x 10,000 지형, 모서리 플랫폼, 경사로, 체크포인트 설계를 먼저 반영한다.
 - 액터 이름은 `Cube`, `Cube2` 같은 기본 이름 대신 역할 중심 이름으로 정리한다.
 - 웨이브 스폰 좌표는 100 m 전장의 실제 플레이 테스트 후 확정한다.

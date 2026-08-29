@@ -72,8 +72,8 @@ void OnEnemyDeathBP();
 - BP_SpawnPoint_SouthEast
 - BP_SpawnPoint_SouthWest
 - BP_SpawnPoint_CenterBoss
-- BP_HealthPickup
-- BP_AmmoPickup
+- `ACWSSupplyPickup` (현재 네이티브 런타임 생성)
+- BP_HealthPickup / BP_AmmoPickup (추후 메시·VFX 스타일링용 선택 항목)
 
 ## 7. Blueprint 변수 노출 기준
 

@@ -10,7 +10,9 @@ class APawn;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSRoundEvent, int32, RoundNumber);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCWSRemainingEnemyEvent, int32, RemainingEnemies, int32, RoundNumber);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCWSWavePhaseEvent, ECWSWavePhase, WavePhase, int32, RoundNumber);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCWSWaveSystemCompletedEvent);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSBossSpawnedEvent, AActor*, BossActor);
 
 UCLASS(BlueprintType)
 class ARENASHOOTER_API ACWSWaveManager : public AActor
@@ -41,6 +43,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Wave")
 	bool IsRoundInProgress() const { return bRoundInProgress; }
 
+	UFUNCTION(BlueprintPure, Category = "Wave")
+	ECWSWavePhase GetWavePhase() const { return CurrentPhase; }
+
+	UFUNCTION(BlueprintPure, Category = "Wave")
+	float GetPhaseTimeRemaining() const;
+
+	UFUNCTION(BlueprintPure, Category = "Wave")
+	float GetPhaseElapsedTime() const;
+
 	UPROPERTY(BlueprintAssignable, Category = "Wave|Events")
 	FCWSRoundEvent OnRoundStarted;
 
@@ -51,7 +62,13 @@ public:
 	FCWSRemainingEnemyEvent OnRemainingEnemyCountChanged;
 
 	UPROPERTY(BlueprintAssignable, Category = "Wave|Events")
+	FCWSWavePhaseEvent OnWavePhaseChanged;
+
+	UPROPERTY(BlueprintAssignable, Category = "Wave|Events")
 	FCWSWaveSystemCompletedEvent OnAllRoundsCompleted;
+
+	UPROPERTY(BlueprintAssignable, Category = "Wave|Events")
+	FCWSBossSpawnedEvent OnBossSpawned;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	bool bAutoStart = true;
@@ -63,7 +80,16 @@ public:
 	TSoftClassPtr<APawn> DefaultEnemyClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	TSoftClassPtr<APawn> FastEnemyClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	TSoftClassPtr<APawn> TankEnemyClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	TSoftClassPtr<APawn> BossEnemyClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	bool bUseDefaultArchetypeComposition = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	TArray<FCWSRoundDefinition> Rounds;
@@ -77,10 +103,14 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wave")
 	bool bAllRoundsCompleted = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Wave")
+	ECWSWavePhase CurrentPhase = ECWSWavePhase::Idle;
+
 private:
 	struct FPendingSpawn
 	{
 		ECWSSpawnDirection Direction = ECWSSpawnDirection::North;
+		ECWSEnemyType EnemyType = ECWSEnemyType::Normal;
 		float Interval = 1.0f;
 		bool bUseBossClass = false;
 	};
@@ -89,16 +119,23 @@ private:
 	void CacheSpawnPoints();
 	void BeginCurrentRoundSpawning();
 	void BuildSpawnQueue(const FCWSRoundDefinition& RoundDefinition);
+	UClass* ResolveEnemyClass(ECWSEnemyType EnemyType) const;
 	void SpawnNextEnemy();
 	void EvaluateRoundCompletion();
 	void CompleteCurrentRound();
 	void StartNextRound();
+	void SetWavePhase(ECWSWavePhase NewPhase);
 	void BroadcastRemainingEnemyCount();
 	const FCWSRoundDefinition* FindRoundDefinition(int32 RoundNumber) const;
 	ACWSSpawnPoint* SelectSpawnPoint(ECWSSpawnDirection Direction);
 
 	UFUNCTION()
 	void HandleSpawnedEnemyDestroyed(AActor* DestroyedActor);
+
+	UFUNCTION()
+	void HandleSpawnedEnemyDeath(AActor* DeadActor);
+
+	void RemoveTrackedEnemy(AActor* EnemyActor);
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<ACWSSpawnPoint>> CachedSpawnPoints;
@@ -111,4 +148,5 @@ private:
 	FTimerHandle SpawnTimerHandle;
 	FTimerHandle PostRoundTimerHandle;
 	bool bWaveSystemStarted = false;
+	float PhaseStartedTime = 0.0f;
 };

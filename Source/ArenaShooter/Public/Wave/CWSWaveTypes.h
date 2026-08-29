@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Enemy/CWSEnemyTypes.h"
 #include "CWSWaveTypes.generated.h"
 
 UENUM(BlueprintType)
@@ -17,6 +18,17 @@ enum class ECWSSpawnDirection : uint8
 	Center UMETA(DisplayName = "Center")
 };
 
+UENUM(BlueprintType)
+enum class ECWSWavePhase : uint8
+{
+	Idle UMETA(DisplayName = "Idle"),
+	Preparing UMETA(DisplayName = "Preparing"),
+	Active UMETA(DisplayName = "Active"),
+	RoundCleared UMETA(DisplayName = "Round Cleared"),
+	Completed UMETA(DisplayName = "Completed"),
+	Stopped UMETA(DisplayName = "Stopped")
+};
+
 USTRUCT(BlueprintType)
 struct ARENASHOOTER_API FCWSRoundSpawnGroup
 {
@@ -30,6 +42,9 @@ struct ARENASHOOTER_API FCWSRoundSpawnGroup
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave", meta = (ClampMin = "0.05"))
 	float SpawnInterval = 1.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
+	ECWSEnemyType EnemyType = ECWSEnemyType::Normal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wave")
 	bool bUseBossClass = false;
