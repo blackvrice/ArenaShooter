@@ -41,8 +41,9 @@ private:
 	void Reload(const FInputActionValue& Value);
 	void RestartLevel(const FInputActionValue& Value);
 	void UpdateRifleAnimation();
+	void UpdateWeaponRecoil(float DeltaSeconds);
 	void PlayRifleAnimation(UAnimSequence* Animation, bool bLooping, float PlayRate = 1.0f);
-	void PlayRifleFireAction();
+	void PlayWeaponFireRecoil();
 	void PlayRifleAction(UAnimSequence* Animation, float Duration);
 	UAnimSequence* SelectRifleMovementAnimation() const;
 
@@ -77,9 +78,6 @@ private:
 	TObjectPtr<UAnimSequence> RifleFallAnimation;
 
 	UPROPERTY()
-	TObjectPtr<UAnimSequence> RifleFireAnimation;
-
-	UPROPERTY()
 	TObjectPtr<UAnimSequence> RifleReloadAnimation;
 
 	UPROPERTY(Transient)
@@ -112,5 +110,9 @@ private:
 	UPROPERTY()
 	TObjectPtr<UInputAction> RestartAction;
 
+	FTransform WeaponRestRelativeTransform = FTransform::Identity;
+	float WeaponRecoilElapsed = 0.0f;
+	float WeaponRecoilDuration = 0.14f;
+	bool bWeaponRecoilActive = false;
 	float RifleActionEndTime = 0.0f;
 };

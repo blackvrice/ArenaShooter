@@ -96,8 +96,6 @@ ACWSPlayerCharacter::ACWSPlayerCharacter()
 		TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Start_Loop.MM_Rifle_Jump_Start_Loop"));
 	RifleFallAnimation = LoadRifleAnimation(
 		TEXT("/Game/Characters/Mannequins/Anims/Rifle/Jump/MM_Rifle_Jump_Fall_Loop.MM_Rifle_Jump_Fall_Loop"));
-	RifleFireAnimation = LoadRifleAnimation(
-		TEXT("/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Fire.MM_Rifle_Fire"));
 	RifleReloadAnimation = LoadRifleAnimation(
 		TEXT("/Game/Characters/Mannequins/Anims/Rifle/MM_Rifle_Reload.MM_Rifle_Reload"));
 
@@ -130,6 +128,7 @@ void ACWSPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	HealthComponent->OnDeath.AddDynamic(this, &ACWSPlayerCharacter::HandleDeath);
+	WeaponRestRelativeTransform = WeaponMesh->GetRelativeTransform();
 	PlayRifleAnimation(RifleIdleAnimation, true);
 	CombatMappingContext = NewObject<UInputMappingContext>(this, TEXT("CWSCombatMappingContext"));
 	if (FireAction)
@@ -167,6 +166,7 @@ void ACWSPlayerCharacter::Tick(const float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	UpdateRifleAnimation();
+	UpdateWeaponRecoil(DeltaSeconds);
 }
 
 void ACWSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -244,7 +244,7 @@ void ACWSPlayerCharacter::Fire(const FInputActionValue& Value)
 	{
 		if (WeaponComponent->TryFire())
 		{
-			PlayRifleFireAction();
+			PlayWeaponFireRecoil();
 		}
 		else if (WeaponComponent->IsReloading() && CurrentRifleAnimation != RifleReloadAnimation)
 		{
@@ -288,6 +288,37 @@ void ACWSPlayerCharacter::UpdateRifleAnimation()
 	PlayRifleAnimation(DesiredAnimation, true);
 }
 
+void ACWSPlayerCharacter::UpdateWeaponRecoil(const float DeltaSeconds)
+{
+	if (!WeaponMesh || !bWeaponRecoilActive)
+	{
+		return;
+	}
+
+	WeaponRecoilElapsed = FMath::Min(WeaponRecoilElapsed + DeltaSeconds, WeaponRecoilDuration);
+	const float NormalizedTime = WeaponRecoilDuration > KINDA_SMALL_NUMBER
+		? WeaponRecoilElapsed / WeaponRecoilDuration
+		: 1.0f;
+	const float KickAlpha = NormalizedTime < 0.22f
+		? FMath::InterpEaseOut(0.0f, 1.0f, NormalizedTime / 0.22f, 2.0f)
+		: FMath::Square(1.0f - ((NormalizedTime - 0.22f) / 0.78f));
+
+	FTransform RecoilTransform = WeaponRestRelativeTransform;
+	const FVector LocalRecoilOffset(-7.0f * KickAlpha, 0.0f, 1.25f * KickAlpha);
+	RecoilTransform.AddToTranslation(
+		WeaponRestRelativeTransform.GetRotation().RotateVector(LocalRecoilOffset));
+	RecoilTransform.SetRotation(
+		(WeaponRestRelativeTransform.GetRotation() * FRotator(3.5f * KickAlpha, 0.0f, 0.0f).Quaternion())
+		.GetNormalized());
+	WeaponMesh->SetRelativeTransform(RecoilTransform);
+
+	if (WeaponRecoilElapsed >= WeaponRecoilDuration)
+	{
+		WeaponMesh->SetRelativeTransform(WeaponRestRelativeTransform);
+		bWeaponRecoilActive = false;
+	}
+}
+
 void ACWSPlayerCharacter::PlayRifleAnimation(UAnimSequence* Animation, const bool bLooping, const float PlayRate)
 {
 	if (!Animation || CurrentRifleAnimation == Animation)
@@ -303,27 +334,18 @@ void ACWSPlayerCharacter::PlayRifleAnimation(UAnimSequence* Animation, const boo
 	CurrentRifleAnimation = Animation;
 }
 
-void ACWSPlayerCharacter::PlayRifleFireAction()
+void ACWSPlayerCharacter::PlayWeaponFireRecoil()
 {
-	if (!RifleFireAnimation || !GetWorld())
+	if (!WeaponMesh)
 	{
 		return;
 	}
 
-	const float CurrentTime = GetWorld()->GetTimeSeconds();
-	if (CurrentRifleAnimation == RifleFireAnimation && CurrentTime < RifleActionEndTime)
-	{
-		return;
-	}
-
-	// MM_Rifle_Fire is a full-body one-shot animation. Compressing its entire clip
-	// into the 0.15 second weapon interval and restarting it for every bullet makes
-	// the pose snap between recoil and locomotion. Let one natural recoil cycle
-	// finish while the weapon component continues to handle the actual fire rate.
-	CurrentRifleAnimation = nullptr;
-	PlayRifleAnimation(RifleFireAnimation, false);
-	const float FireInterval = WeaponComponent ? WeaponComponent->GetFireInterval() : 0.0f;
-	RifleActionEndTime = CurrentTime + FMath::Max(RifleFireAnimation->GetPlayLength(), FireInterval);
+	// MM_Rifle_Fire is additive data and cannot be used as a full-body single-node
+	// animation. Keep the current locomotion pose and animate only the attached gun
+	// so firing never replaces the character with an invalid additive pose.
+	WeaponRecoilElapsed = 0.0f;
+	bWeaponRecoilActive = true;
 }
 
 void ACWSPlayerCharacter::PlayRifleAction(UAnimSequence* Animation, const float Duration)
