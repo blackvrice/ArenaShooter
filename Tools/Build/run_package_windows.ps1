@@ -6,6 +6,8 @@ param(
     [string]$ExistingPackageDirectory = "",
     [ValidateRange(10, 600)]
     [int]$SmokeTimeoutSeconds = 60,
+    [ValidateRange(1, 8)]
+    [int]$RecoveryPakCoreLimit = 2,
     [switch]$ColdDdc,
     [switch]$KeepWorkspace
 )
@@ -128,6 +130,7 @@ try {
         [Environment]::SetEnvironmentVariable("UE-LocalDataCachePath", $isolatedDdcPath, "Process")
         $localDdcOverridden = $true
         $uatArguments += "-AdditionalCookerOptions=-DDC=InstalledNoZenLocalFallback -SharedDataCachePath=None -corelimit=8"
+        $uatArguments += "-AdditionalPakOptions=-corelimit=$RecoveryPakCoreLimit"
     }
 
     & $runUat @uatArguments

@@ -8,11 +8,13 @@
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_package_windows.ps1
 ```
 
-공유 Warm DDC에서 `OodleLZ_Decompress` 또는 `FLargeMemoryReader` 손상이 반복되면 캐시를 삭제하지 않고 격리된 filesystem DDC로 재시도한다. 복구 경로는 `InstalledNoZenLocalFallback`으로 검증된 Engine Pak을 재사용하고, 프로젝트 파생 데이터는 임시 worktree 내부에만 기록하며 `-corelimit=8`로 Cook 부하를 제한한다.
+공유 Warm DDC에서 `OodleLZ_Decompress` 또는 `FLargeMemoryReader` 손상이 반복되면 캐시를 삭제하지 않고 격리된 filesystem DDC로 재시도한다. 복구 경로는 `InstalledNoZenLocalFallback`으로 검증된 Engine Pak을 재사용하고, 프로젝트 파생 데이터는 임시 worktree 내부에만 기록한다. Cook은 `-corelimit=8`, 최종 IoStore/UnrealPak은 기본 2코어로 제한해 Intel 13/14세대 CPU에서 발생할 수 있는 Oodle 셰이더 압축 불안정을 낮춘다.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_package_windows.ps1 -ColdDdc
 ```
+
+복구용 UnrealPak 코어 수는 필요할 때 `-RecoveryPakCoreLimit 1`처럼 1~8 범위에서 조정할 수 있다. 실패한 Cook 결과를 조사하거나 같은 worktree에서 후속 복구를 진행해야 할 때는 `-KeepWorkspace`를 함께 지정한다.
 
 스크립트는 다음 단계를 한 번에 수행한다.
 
