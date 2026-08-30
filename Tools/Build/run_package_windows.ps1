@@ -17,6 +17,8 @@ $projectFile = Join-Path $projectRoot "ArenaShooter.uproject"
 $runUat = Join-Path $EngineRoot "Engine\Build\BatchFiles\RunUAT.bat"
 $workspacePath = $null
 $worktreeCreated = $false
+$localDdcOverridden = $false
+$previousLocalDdcPath = [Environment]::GetEnvironmentVariable("UE-LocalDataCachePath", "Process")
 
 if (-not (Test-Path -LiteralPath $projectFile)) {
     throw "ArenaShooter.uproject was not found at $projectFile"
@@ -122,7 +124,10 @@ try {
         "-NoXGE"
     )
     if ($ColdDdc) {
-        $uatArguments += "-AdditionalCookerOptions=-DDC=Cold -ReduceThreadUsage -nothreading -ini:Engine:[DevOptions.Shaders]:NumUnusedShaderCompilingThreads=27 -ini:Engine:[DevOptions.Shaders]:NumUnusedShaderCompilingThreadsDuringGame=27"
+        $isolatedDdcPath = Join-Path $workspacePath "LocalDerivedDataCache"
+        [Environment]::SetEnvironmentVariable("UE-LocalDataCachePath", $isolatedDdcPath, "Process")
+        $localDdcOverridden = $true
+        $uatArguments += "-AdditionalCookerOptions=-DDC=InstalledNoZenLocalFallback -SharedDataCachePath=None -corelimit=8"
     }
 
     & $runUat @uatArguments
@@ -135,6 +140,9 @@ try {
     Write-Host "Package executable: $verifiedExe"
 }
 finally {
+    if ($localDdcOverridden) {
+        [Environment]::SetEnvironmentVariable("UE-LocalDataCachePath", $previousLocalDdcPath, "Process")
+    }
     if ($worktreeCreated -and -not $KeepWorkspace) {
         & git -C $projectRoot worktree remove --force $workspacePath
         if ($LASTEXITCODE -ne 0) {

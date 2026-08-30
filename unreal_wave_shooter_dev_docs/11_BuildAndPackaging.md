@@ -8,7 +8,7 @@
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_package_windows.ps1
 ```
 
-공유 Warm DDC에서 `OodleLZ_Decompress` 또는 `FLargeMemoryReader` 손상이 반복되면 캐시를 삭제하지 않고 격리된 Cold DDC로 재시도한다. Cold 경로는 Cooker threading을 비활성화하고 shader worker를 1개로 제한해 Intel 13/14세대 고부하 환경의 데이터 손상 가능성도 낮춘다.
+공유 Warm DDC에서 `OodleLZ_Decompress` 또는 `FLargeMemoryReader` 손상이 반복되면 캐시를 삭제하지 않고 격리된 filesystem DDC로 재시도한다. 복구 경로는 `InstalledNoZenLocalFallback`으로 검증된 Engine Pak을 재사용하고, 프로젝트 파생 데이터는 임시 worktree 내부에만 기록하며 `-corelimit=8`로 Cook 부하를 제한한다.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_package_windows.ps1 -ColdDdc
