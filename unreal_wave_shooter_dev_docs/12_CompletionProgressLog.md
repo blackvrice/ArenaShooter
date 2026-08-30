@@ -157,7 +157,7 @@
 
 ## 2026-08-30 - 6단계: NexTorial 포트폴리오 구조와 표현 최종 정리
 
-상태: Editor 회귀검증 완료 / 최신 Shipping 재검증 대기
+상태: 완료
 
 ### 분석
 
@@ -195,9 +195,18 @@
 - 유효 PNG와 직접 시각 QA: HUD 1,389,127 bytes, Combat 944,316 bytes, Attack 916,185 bytes, Visual Polish 1,284,710 bytes.
 - Visual Polish에서 Normal 초록, Fast 주황, Tank 파랑, Final Boss 적색, Crown, 넓은 Aura Ring, Boss HP bar를 직접 확인했다.
 
+### Shipping 검증과 배포 자산
+
+- `6ce5ed6`을 ASCII detached worktree에 체크아웃해 Win64 Shipping Build/Cook/Stage/Pak/IoStore/Archive를 실행했다.
+- Cook 565개 패키지와 AutomationTool 전체 단계가 성공했다.
+- Archive의 실제 `ArenaShooter-Win64-Shipping.exe`에서 Round 1~5 스모크가 종료 코드 0으로 끝났다.
+- `CWS_PACKAGE_VERIFICATION_SUCCESS`를 확인했다.
+- `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip`을 생성하고 71개 엔트리, PDB 0개, Shipping EXE 포함을 확인했다.
+- ZIP 크기 331,593,727 bytes, SHA-256 `9E130D61386E3CE3535DB9AC0DF9F9F372777229E3763ECD060D18182F945291`을 기록했다.
+
 ### 남은 문제
 
 - Normal/Fast/Tank의 additive 피격 애니메이션을 `AnimSingleNodeInstance`에 단독 재생할 때 cooked build 경고가 남는다. 피격 상태 카운터와 네이티브 버스트는 동작하지만, 전용 AnimBP additive slot 또는 비-additive 피격 시퀀스로 정리할 필요가 있다.
 - 일부 Skeletal Mesh의 derived data key가 로드 후 달라져 Editor 첫 DDC 구축이 매우 오래 걸린다. 에셋을 UE 5.6에서 안전하게 재저장하고 별도 회귀검증해야 한다.
 - Gameplay GIF와 Video는 실제 사람 조작 촬영이 필요하므로 README에는 깨진 링크 대신 TODO를 유지한다.
-- 현재 GitHub CLI가 인증되지 않아 Release 생성은 할 수 없다. 최신 Shipping 통과 후 `14_ReleaseChecklist.md`와 검증 ZIP을 준비한다.
+- 현재 GitHub CLI가 인증되지 않아 Release 페이지와 Tag 생성은 수행하지 않았다. 대신 검증 ZIP과 SHA-256, Release notes, 업로드 체크리스트를 준비했다.

@@ -10,7 +10,7 @@
 | Target Branch | `master` |
 | Engine | Unreal Engine 5.6 |
 
-실제 ZIP 경로·크기·SHA-256은 현재 `master` HEAD의 Shipping 검증이 끝난 뒤에만 이 문서에 확정한다. 이전 커밋의 ZIP이나 존재하지 않는 파일을 새 릴리스 자산으로 사용하지 않는다.
+아래 자산은 포트폴리오 코드 커밋 `6ce5ed6`을 직접 Shipping 패키징하고 실행 검증한 결과다. 이후 문서 전용 커밋이 추가되어도 Release 자산의 소스 커밋은 `6ce5ed6`으로 유지한다.
 
 ## Required validation
 
@@ -21,11 +21,11 @@
 - [x] 실제 Hitscan `CWS_BALANCE_COMBAT_SUCCESS`
 - [x] HUD/Combat/Attack/Visual 캡처 4종과 유효 PNG 확인
 - [x] 캡처 4종 직접 시각 검수
-- [ ] Shipping Build/Cook/Stage/Pak/IoStore/Archive
-- [ ] 패키지 EXE의 `CWS_ALL_ROUNDS_SMOKE_SUCCESS`
-- [ ] 패키징 스크립트의 `CWS_PACKAGE_VERIFICATION_SUCCESS`
-- [ ] PDB 제외 배포 ZIP 생성과 SHA-256 기록
-- [ ] 깨진 README 링크와 존재하지 않는 자산 표기 없음
+- [x] Shipping Build/Cook/Stage/Pak/IoStore/Archive
+- [x] 패키지 EXE의 Round 1~5 스모크 종료 코드 0
+- [x] 패키징 스크립트의 `CWS_PACKAGE_VERIFICATION_SUCCESS`
+- [x] PDB 제외 배포 ZIP 생성과 SHA-256 기록
+- [x] README 로컬 링크 5개 존재 확인, 존재하지 않는 미디어는 링크 대신 TODO 표기
 
 ## Packaging and verification
 
@@ -50,17 +50,18 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 
 ## Release asset record
 
-현재 포트폴리오 변경분의 새 Shipping 실행 검증 전 상태: **Pending**
+현재 포트폴리오 변경분의 Shipping 실행 검증 상태: **Verified**
 
-| 항목 | 검증 후 기록 |
+| 항목 | 검증 기록 |
 |---|---|
-| Source commit | Pending |
-| Archive directory | Pending |
-| Verified executable | Pending |
-| ZIP path | Pending |
-| ZIP size | Pending |
-| SHA-256 | Pending |
-| Packaged smoke marker | Pending |
+| Source commit | `6ce5ed6` |
+| Archive directory | `C:\ArenaShooterPackages\ArenaShooter-20260830-173452-6ce5ed6` |
+| Verified executable | `Windows\ArenaShooter\Binaries\Win64\ArenaShooter-Win64-Shipping.exe` |
+| ZIP path | `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip` |
+| ZIP size | 331,593,727 bytes, 71 entries, PDB 0 |
+| ZIP SHA-256 | `9E130D61386E3CE3535DB9AC0DF9F9F372777229E3763ECD060D18182F945291` |
+| EXE SHA-256 | `5548A2A66376D70A475283B75BA803A3D7E470A048D81FBC9CCF18AEAEBE20D4` |
+| Packaged smoke marker | `CWS_PACKAGE_VERIFICATION_SUCCESS` |
 
 ## Manual presentation handoff
 

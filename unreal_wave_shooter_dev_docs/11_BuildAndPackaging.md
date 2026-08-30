@@ -57,3 +57,20 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 - Shipping 실행 파일 SHA-256: `F37CB6B634FD5AC1792DD15B8DC98A9244A269D214BC039E3A97F76044A934F7`
 
 첫 두 출시 후보는 `UNiagaraStatelessEmitter::Serialize`에서 Shipping 전용 접근 위반이 발생해 승인하지 않았다. 피격/사망 효과를 `ACWSCombatBurstEffect` 네이티브 메시·라이트 버스트로 교체하고 Niagara 런타임 참조를 제거한 뒤 기본 맵 로드와 전체 라운드 패키지 검증을 통과했다. 원본 Archive는 PDB를 보존하고, 배포 ZIP은 PDB를 제외했다.
+
+## 6. 2026-08-30 NexTorial 포트폴리오 빌드
+
+- 소스 커밋: `6ce5ed6` (`refactor gameplay QA and polish boss presentation`)
+- Win64 Shipping/Editor 컴파일과 UnrealHeaderTool 성공
+- Cook 565개 패키지, Stage/Pak/IoStore/Archive 성공
+- 실제 `ArenaShooter-Win64-Shipping.exe`에서 Round 1~5 스모크 종료 코드 0
+- 성공 마커: `CWS_PACKAGE_VERIFICATION_SUCCESS: commit 6ce5ed6 was packaged and passed the all-round Shipping smoke test.`
+- 보존 Archive: `C:\ArenaShooterPackages\ArenaShooter-20260830-173452-6ce5ed6`
+- 검증 실행 파일: `C:\ArenaShooterPackages\ArenaShooter-20260830-173452-6ce5ed6\Windows\ArenaShooter\Binaries\Win64\ArenaShooter-Win64-Shipping.exe`
+- 배포 ZIP: `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip`
+- ZIP 구성: 71개 엔트리, PDB 0개, Shipping EXE 포함
+- ZIP 크기: 331,593,727 bytes
+- ZIP SHA-256: `9E130D61386E3CE3535DB9AC0DF9F9F372777229E3763ECD060D18182F945291`
+- Shipping 실행 파일 SHA-256: `5548A2A66376D70A475283B75BA803A3D7E470A048D81FBC9CCF18AEAEBE20D4`
+
+이 패키지는 리팩터링과 Boss 표현 변경이 포함된 커밋을 ASCII detached worktree에서 직접 빌드한 결과다. 이후 문서 기록 커밋은 패키지 바이너리에 영향을 주지 않으므로, Release 자산의 소스 커밋은 `6ce5ed6`으로 고정한다.

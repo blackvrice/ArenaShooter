@@ -24,7 +24,7 @@ Unreal Engine 5.6 C++로 구현한 3인칭 아레나 웨이브 슈터로, 8방�
 | 70% 명중률 탄약 | 가용 600발, 필요 578발 |
 | 자동 검증 | Round 1, Round 1~5, 밸런스, 캡처 4종 통과 |
 | Shipping | Build/Cook/Stage/Pak/IoStore/Archive 및 패키지 전체 라운드 통과 |
-| 출시 후보 | `ArenaShooter-20260827-202923-32218bc-Windows.zip` |
+| 출시 후보 | `ArenaShooter-v1.0.0-Windows.zip` (`6ce5ed6`) |
 
 ## 60~90초 플레이 영상 시나리오
 
@@ -48,4 +48,4 @@ Unreal Engine 5.6 C++로 구현한 3인칭 아레나 웨이브 슈터로, 8방�
 
 ## 실행과 배포
 
-검증된 실행 파일은 `C:\ArenaShooterPackages\ArenaShooter-20260827-202923-32218bc\Windows\ArenaShooter.exe`다. 배포 시에는 PDB를 제외한 ZIP을 사용하고, 압축 해제 후 `Windows\ArenaShooter.exe`를 실행한다. 상세 해시는 `11_BuildAndPackaging.md`에 기록되어 있다.
+검증된 실행 파일은 `C:\ArenaShooterPackages\ArenaShooter-20260830-173452-6ce5ed6\Windows\ArenaShooter.exe`다. 배포 자산은 PDB를 제외한 `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip`이며, 압축 해제 후 `Windows\ArenaShooter.exe`를 실행한다. 상세 해시는 `11_BuildAndPackaging.md`에 기록되어 있다.
