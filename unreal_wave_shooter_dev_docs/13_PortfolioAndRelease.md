@@ -9,10 +9,11 @@ Unreal Engine 5.6 C++로 구현한 3인칭 아레나 웨이브 슈터로, 8방�
 - `ACWSWaveManager`: Round 1~5, 총 97기, 9개 스폰 지점과 타입별 구성
 - `UCWSHitscanWeaponComponent`: 실제 라인트레이스, 발사 간격, 탄창/예비 탄약, 시간 기반 재장전
 - `ACWSEnemyBase`와 파생 클래스: Normal/Fast/Tank/Boss 능력치, NavMesh 추적, 공격·피격·사망 피드백
-- `ACWSBossEnemy`: 체력 비율 기반 3단계 페이즈, Ground Slam과 Shockwave
+- `ACWSBossEnemy`: 체력 비율 기반 3단계 페이즈, Ground Slam과 Shockwave, Crown/Aura/Light 페이즈 표현
 - `ACWSArenaVisualDirector`: 저장 맵을 훼손하지 않는 중앙 링, 엄폐물, 방향 비콘 런타임 레이어
 - `ACWSCombatBurstEffect`와 `UCWSCombatSoundWave`: Shipping 공통 네이티브 VFX와 런타임 PCM 전투 SFX
-- 자동화: 실제 사격 404발, Round 1~5, 보스 패턴, 사망/재시작, 오프스크린 시각 QA, Shipping 패키지 실행 검증
+- `FCWSGameplayTestCoordinator`와 Runner 3종: GameMode와 분리된 실제 사격 404발, Round 1~5, 보스 패턴, 사망/재시작, 오프스크린 시각 QA
+- Shipping 자동화: ASCII worktree Build/Cook/Pak과 패키지 실행 파일 Round 1~5 검증
 
 ## 증명 가능한 결과
 
@@ -31,14 +32,15 @@ Unreal Engine 5.6 C++로 구현한 3인칭 아레나 웨이브 슈터로, 8방�
 2. 8~25초: Normal에게 2~3발 발사해 총성, 충돌음, 버스트, 피격 애니메이션과 사망 피드백을 연속으로 담는다.
 3. 25~38초: 탄창을 소비한 뒤 재장전 UI와 예비 탄약 감소, 탄약 보급 획득을 보여준다.
 4. 38~55초: 주황 Fast와 파랑 Tank를 같은 화면에 두고 속도·크기·체력 차이를 보여준다.
-5. 55~75초: Boss 보라 마커, 체력 HUD, Ground Slam과 Shockwave를 한 번씩 피하거나 맞는 장면을 담는다.
+5. 55~75초: Crown과 보라 Aura로 Boss 등장을 보여주고, 체력을 낮춰 주황/적색으로 바뀌는 페이즈 표현과 Ground Slam·Shockwave를 한 번씩 담는다.
 6. 75~90초: Round 5 클리어 화면과 Enter 재시작 흐름으로 마무리한다.
 
 ## 촬영 QA 체크리스트
 
 - 1920×1080, 60fps, 게임 오디오와 마우스 커서 미포함
 - HUD가 화면 밖으로 잘리지 않고 `HEALTH / AMMO / ROUND / ENEMIES`가 읽히는지 확인
-- Normal 초록, Fast 주황, Tank 파랑, Boss 보라가 영상 압축 후에도 구분되는지 확인
+- Normal 초록, Fast 주황, Tank 파랑과 Boss의 Crown·넓은 Aura가 영상 압축 후에도 1초 안에 구분되는지 확인
+- Boss Aura/Point Light가 Phase 1 보라 → Phase 2 주황 → Final Phase 적색으로 바뀌는 장면 포함
 - 피격 버스트와 사망 버스트가 각각 최소 한 번 선명하게 보이는지 확인
 - 재장전 중 입력과 보급 획득 전후 탄약 수치가 연결되는지 확인
 - 보스 패턴 두 종류와 최종 클리어가 포함되는지 확인

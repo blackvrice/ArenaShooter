@@ -4,6 +4,10 @@
 #include "Enemy/CWSEnemyBase.h"
 #include "CWSBossEnemy.generated.h"
 
+class UMaterialInstanceDynamic;
+class UPointLightComponent;
+class UStaticMeshComponent;
+
 UENUM(BlueprintType)
 enum class ECWSBossPhase : uint8
 {
@@ -52,6 +56,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Boss")
 	FString GetLastPatternLabel() const;
 
+	UFUNCTION(BlueprintPure, Category = "Boss|Presentation")
+	bool HasBossPresentation() const { return bBossPresentationReady; }
+
 	UPROPERTY(BlueprintAssignable, Category = "Boss|Events")
 	FCWSBossPhaseEvent OnBossPhaseChanged;
 
@@ -67,6 +74,7 @@ private:
 		AActor* ChangeInstigator);
 
 	void UpdateBossPhase(float HealthPercent);
+	void ApplyBossPhasePresentation();
 	bool ExecuteGroundSlam(AActor* TargetActor);
 	bool ExecuteShockwave(AActor* TargetActor);
 	void RecordPattern(ECWSBossPattern Pattern);
@@ -98,8 +106,24 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Boss")
 	int32 PatternExecutionCount = 0;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Presentation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> BossAuraRing;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Presentation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UStaticMeshComponent> BossCrown;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Boss|Presentation", meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UPointLightComponent> BossPhaseLight;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> BossAuraMaterial;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> BossCrownMaterial;
+
 	int32 ExplosionSoundPlayCount = 0;
 
 	float NextPatternTime = 0.0f;
 	bool bUseShockwaveNext = false;
+	bool bBossPresentationReady = false;
 };

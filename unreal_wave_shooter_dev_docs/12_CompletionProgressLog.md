@@ -154,3 +154,50 @@
 ### 완료 상태
 
 코드·자동 검증·Shipping 출시 후보·배포 ZIP·기술 문서·포트폴리오 페이지까지 완료했다. 실제 사람 조작이 필요한 영상 녹화와 최종 체감 QA는 `13_PortfolioAndRelease.md`의 체크리스트로 인계한다.
+
+## 2026-08-30 - 6단계: NexTorial 포트폴리오 구조와 표현 최종 정리
+
+상태: Editor 회귀검증 완료 / 최신 Shipping 재검증 대기
+
+### 분석
+
+- `ACWSGameMode`는 약 1,660줄의 구현과 204줄 헤더에 Runtime 흐름, Round 스모크, 전체 라운드, 밸런스, 캡처 4종, 프로세스 종료 상태가 함께 있었다.
+- 기존 Boss는 체력·3단계 패턴은 명확했지만 Normal 메시 1.65배 폴백과 보라 마커만 사용해 영상에서 단순 확대 적처럼 보일 여지가 있었다.
+- README는 구현 정보는 충분했지만 Gameplay 미디어 위치, 압축된 기술 포인트, 실제 Problem Solving, AI 활용과 사람의 검증 책임이 첫 화면에 드러나지 않았다.
+- 캡처 테스트는 파일 크기만 확인해, 비동기 PNG 기록이 완료되기 전에 종료하면 0으로 채워진 손상 파일도 성공 처리할 수 있었다.
+
+### 구현
+
+- GameMode 테스트 코드를 `FCWSGameplayTestCoordinator`, `FCWSCombatSmokeRunner`, `FCWSBalanceTestRunner`, `FCWSScreenshotTestRunner`로 옮겼다.
+- GameMode는 Player/Wave 연결, 보급, Game Over/Clear, Restart와 Runner 이벤트 전달만 남겨 구현 203줄, 헤더 79줄로 축소했다.
+- Runner의 타이머는 `CreateWeakLambda`를 사용해 레벨 재시작·World 파괴 뒤 콜백이 오래된 GameMode에 접근하지 않게 했다.
+- 밸런스 Runner의 표적은 실제 Player camera view ray 위 800cm에 놓아 숄더 카메라에서도 실제 `TryFire()` 라인트레이스가 결정적으로 맞게 했다.
+- 캡처 Runner는 PNG signature와 마지막 `IEND` 청크가 기록될 때까지 기다리고, 10초 안에 완성되지 않으면 실패하도록 강화했다.
+- Boss에 전용 Crown, Aura Ring, 고강도 Point Light를 추가하고 Phase 1 보라, Phase 2 주황, Final Phase 적색과 Aura 크기 변화를 연결했다. 외부 에셋은 추가하지 않았다.
+- Visual Polish 캡처에 4종 적과 Final Phase Boss를 함께 배치해 시각적 차이를 자동 상태 검사와 직접 화면 QA 양쪽에서 확인하게 했다.
+- README 상단을 채용 담당자용 개요로 재구성하고 실제 탄약 경제, Shipping Niagara 충돌, Rifle additive 문제 해결과 Human-directed / AI-assisted / Test-verified 과정을 기록했다.
+
+### 수정 중 발견하고 해결한 회귀
+
+- 첫 분리 빌드에서 UCLASS 헤더의 불완전한 `TUniquePtr` 타입이 생성 코드에서 파괴자를 인스턴스화해 실패했다. Coordinator 소유를 GameMode의 private raw pointer와 명시적 파괴자로 제한하고, Runner 내부는 `TUniquePtr`를 유지했다.
+- 초기 `CreateRaw` 타이머가 레벨 재시작 뒤 파괴된 Runner를 호출했고, 이어 Runner 파괴자가 이미 파괴 중인 World timer를 정리하다 충돌했다. GameMode weak lambda로 전환하고 파괴자에서 World 접근을 제거했다.
+- 분리 직후 밸런스 테스트가 숄더 카메라와 Pawn view 차이 때문에 420발을 모두 빗나갔다. 실제 PlayerController camera ray에 표적을 배치해 테스트 조건을 완화하지 않고 404발 실사격 경로를 복구했다.
+- 첫 HUD 캡처는 1,376,155 bytes였지만 PNG header가 모두 0이었다. 완전한 파일 signature를 기다리는 검증으로 수정한 뒤 유효 PNG를 재생성했다.
+
+### Editor 검증
+
+- `ArenaShooterEditor Win64 Development` 최종 빌드 성공.
+- Map Check 오류 0 / 경고 0, PlayerStart/NavMesh/GameMode 확인.
+- 9개 SpawnPoint, `8 / 16 / 24 / 34 / 15`, 총 97기와 기본 타입 구성 확인.
+- Round 1: 전투 피드백, Reload, Ammo/Health Supply, Player Death, Wave Stop, Restart와 `CWS_ROUND_ONE_SMOKE_SUCCESS` 확인.
+- Round 1~5: Normal/Fast/Tank, Boss 체력 1200, Final Phase, Ground Slam/Shockwave/넉백/폭발음, Final Clear와 `CWS_ALL_ROUNDS_SMOKE_SUCCESS` 확인.
+- 실제 사격: `24 / 40 / 104 / 132 / 104`, 총 404명중/0 miss, 가용 600/70% 필요 578, 잔탄 196, 보급 각 2회와 `CWS_BALANCE_COMBAT_SUCCESS` 확인.
+- 유효 PNG와 직접 시각 QA: HUD 1,389,127 bytes, Combat 944,316 bytes, Attack 916,185 bytes, Visual Polish 1,284,710 bytes.
+- Visual Polish에서 Normal 초록, Fast 주황, Tank 파랑, Final Boss 적색, Crown, 넓은 Aura Ring, Boss HP bar를 직접 확인했다.
+
+### 남은 문제
+
+- Normal/Fast/Tank의 additive 피격 애니메이션을 `AnimSingleNodeInstance`에 단독 재생할 때 cooked build 경고가 남는다. 피격 상태 카운터와 네이티브 버스트는 동작하지만, 전용 AnimBP additive slot 또는 비-additive 피격 시퀀스로 정리할 필요가 있다.
+- 일부 Skeletal Mesh의 derived data key가 로드 후 달라져 Editor 첫 DDC 구축이 매우 오래 걸린다. 에셋을 UE 5.6에서 안전하게 재저장하고 별도 회귀검증해야 한다.
+- Gameplay GIF와 Video는 실제 사람 조작 촬영이 필요하므로 README에는 깨진 링크 대신 TODO를 유지한다.
+- 현재 GitHub CLI가 인증되지 않아 Release 생성은 할 수 없다. 최신 Shipping 통과 후 `14_ReleaseChecklist.md`와 검증 ZIP을 준비한다.

@@ -5,7 +5,7 @@
 ## 프로젝트 개요
 
 - 장르: 3인칭 웨이브 슈터
-- 엔진: Unreal Engine 5.x
+- 엔진: Unreal Engine 5.6
 - 개발 방식: C++ 기반 + Blueprint 보조
 - 핵심 플레이:
   - 플레이어는 중앙에서 시작한다.
@@ -30,6 +30,7 @@
 | 11_BuildAndPackaging.md | Windows Shipping 패키징과 배포본 검증 |
 | 12_CompletionProgressLog.md | 남은 개발 항목의 순차 구현·검증 기록 |
 | 13_PortfolioAndRelease.md | 포트폴리오 소개 문안, 촬영 시나리오와 출시 후보 정보 |
+| 14_ReleaseChecklist.md | 태그, 릴리스 이름, 검증 절차, 배포 ZIP 기록 체크리스트 |
 
 ## AI에게 우선 전달할 핵심 문서
 

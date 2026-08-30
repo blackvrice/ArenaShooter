@@ -1,35 +1,82 @@
 # ArenaShooter
 
-Unreal Engine 5.6과 C++로 만든 3인칭 아레나 웨이브 슈터입니다. 플레이어는 중앙 거점을 지키며 8방향에서 진입하는 Normal/Fast/Tank 적을 상대하고, 5라운드에서 3단계 패턴을 가진 보스를 처치합니다.
+Unreal Engine 5.6과 C++로 구현한 3인칭 Arena Wave Shooter입니다. 중앙 전장을 지키며 서로 다른 역할의 적을 상대하고, 5라운드의 보스전을 돌파하는 플레이 가능한 수직 슬라이스입니다.
 
-`master`에는 5라운드 전체 전투 흐름, Windows Shipping 패키징, 자동 스모크 검증까지 통합된 플레이 가능한 출시 후보가 반영되어 있습니다.
+**Gameplay GIF:** To be added
 
-## 핵심 구현
+**Gameplay Video:** To be added
 
-- Round 1~5 총 97기와 방향별 스폰 구성
-- Normal/Fast/Tank/Boss 능력치, 색상 마커와 발밑 밴드
-- 히트스캔 사격, 60발 탄창, 1.2초 재장전, 예비 탄약과 보급
-- 숄더 카메라와 마우스 시점 회전, 8방향 라이플 이동, C++ 무기 반동
-- 피격/사망 애니메이션, 네이티브 발광 버스트 VFX, 런타임 합성 전투 SFX
-- 준비/전투/클리어/완료 HUD와 게임 오버·재시작 흐름
-- 중앙 링, 충돌·내비게이션 엄폐물 8개, 방향 게이트 비콘 8개
-- 실제 사격 404발과 70% 명중률 기준 탄약 경제 자동 검증
+| 개발 | Engine | Core | 구성 | 검증/배포 |
+|---|---|---|---|---|
+| 개인 프로젝트 / 1인 개발 | Unreal Engine 5.6 | C++ | 5 Rounds · 4 Enemy Types · Boss Battle | Automated Smoke Tests · Windows Shipping |
 
-## 실행
+## Overview
 
-- Unreal Engine 5.6
-- Visual Studio 2022 C++ 게임 개발 도구
-- Windows 10/11
+8방향 스폰에서 진입하는 Normal, Fast, Tank를 히트스캔 라이플로 저지하고, 보급으로 전투 자원을 관리한 뒤 3단계 Boss를 처치하는 웨이브 슈터입니다. 한 판의 시작부터 Final Clear, Game Over, Restart까지 끊김 없는 게임 루프로 완성했습니다.
 
-`ArenaShooter.uproject`를 열고 `/Game/Variant_Combat/Lvl_Combat` 맵에서 Play를 실행합니다. 에디터가 고부하 상태에서 불안정한 PC에서는 다음 저부하 실행 스크립트를 사용할 수 있습니다.
+## Core Gameplay
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_stable_editor.ps1
-```
+`Combat → Wave → Supply → Boss → Clear / Game Over → Restart`
 
-이 스크립트는 기본적으로 DirectX 11, 축소된 스레드 사용량과 제한된 CPU affinity를 적용합니다. 필요하면 `-DirectX12` 또는 격리 DDC를 사용하는 `-ColdDdc` 옵션을 추가할 수 있습니다.
+- Normal은 기본 압박, Fast는 기동 압박, Tank는 높은 체력과 공격력, Boss는 Ground Slam과 Shockwave로 역할이 구분됩니다.
+- 무기는 실제 Visibility 라인트레이스, 60발 탄창, 1.2초 재장전, 예비 탄약을 사용합니다.
+- HUD는 체력·탄약·재장전·라운드·남은 적·Boss 페이즈와 종료 상태를 표시합니다.
 
-## 조작
+## Technical Highlights
+
+1. **Unreal C++ gameplay loop** — Player, Weapon, Enemy AI, Wave 상태 머신, Supply, Boss, HUD를 이벤트 기반으로 연결했습니다.
+2. **실제 Hitscan 탄약 경제 검증** — 계산만 비교하지 않고 `TryFire()`의 라인트레이스·데미지·발사 간격·재장전·보급 경로로 97기를 처치합니다.
+3. **자동 회귀검증** — Round 1/전체 라운드 Smoke, 밸런스, HUD/전투/공격/비주얼 캡처를 테스트 전용 Runner로 분리했습니다.
+4. **Windows Shipping 실행 검증** — Build/Cook/Stage/Pak/IoStore/Archive 뒤 패키지 실행 파일에서 Round 1~5를 다시 검증합니다.
+
+## Architecture
+
+`ACWSGameMode`는 Player/Wave 연결, Round Clear, Game Over, Restart 같은 런타임 흐름만 담당합니다. 명령행 검증은 `FCWSGameplayTestCoordinator`가 감지하고 아래 Runner에 위임합니다.
+
+| Runner | 책임 |
+|---|---|
+| `FCWSCombatSmokeRunner` | Round 1, Round 1~5, 사망/재시작, 전투 피드백, 보급, 적 타입, Boss 패턴 |
+| `FCWSBalanceTestRunner` | 실제 Hitscan 404발과 70% 명중률 기준 탄약 경제 |
+| `FCWSScreenshotTestRunner` | HUD, 피격/사망, 적 공격, 아레나·4종 적 시각 QA와 PNG 무결성 |
+
+Production gameplay 상태를 테스트에 복제하지 않고 실제 Weapon, Enemy, Wave 객체를 사용합니다. 상세 책임 비교는 [C++ Architecture](unreal_wave_shooter_dev_docs/03_CPPArchitecture.md)에 정리했습니다.
+
+## Boss Presentation
+
+전용 Boss 메시의 불안정한 파생 데이터를 다시 사용하지 않고 검증된 Normal 메시를 폴백으로 유지했습니다. 대신 1.65배 실루엣, 전용 Crown, 확대 Aura Ring, 강한 Point Light를 네이티브 컴포넌트로 구성하고 `보라 → 주황 → 적색`으로 페이즈에 따라 바뀌게 해 일반 적의 단순 확대처럼 보이지 않도록 했습니다. 체력 1200, 3 Phase, Ground Slam, Shockwave 규칙은 그대로 유지됩니다.
+
+## Problem Solving
+
+### Ammo Economy
+
+- **문제:** 기존 탄약 210발로는 적 97기의 체력과 무기 데미지 기준 최소 404발이 필요한 5라운드를 완주할 수 없었습니다.
+- **분석/해결:** 라운드별 필요 명중 수를 `24 / 40 / 104 / 132 / 104`로 계산하고 시작 예비 탄약과 라운드 보급을 조정했습니다.
+- **검증:** 실제 `TryFire()`·Hitscan·Reload·Supply 경로로 404발을 모두 적중시켰고, 70% 명중률 기준 필요 578발보다 많은 총 600발을 확보했습니다.
+
+### Unreal Shipping Resource Stability
+
+- **문제:** Editor에서 동작하던 Niagara 효과가 Shipping 기본 맵 로드 중 `UNiagaraStatelessEmitter::Serialize`에서 접근 위반을 일으켰습니다.
+- **분석/해결:** PDB와 CrashContext로 스택을 심볼화한 뒤, 피격/사망 효과를 외부 파생 데이터에 의존하지 않는 네이티브 메시·라이트 버스트로 교체했습니다.
+- **검증:** Shipping Build/Cook/Pak 이후 실제 패키지 실행 파일에서 Round 1~5 스모크를 수행합니다.
+
+### Rifle Animation
+
+- **문제:** Additive 라이플 애니메이션을 전신 단독 재생하면 이동 자세와 캐릭터 실루엣이 깨졌습니다.
+- **해결:** 현재 이동 Pose를 유지하고 부착된 라이플에 짧은 C++ 반동을 적용했습니다.
+- **검증:** 사격 입력, 실제 라인트레이스 피격, 반동 복귀를 전투 스모크와 오프스크린 캡처 경로에서 함께 확인합니다.
+
+## AI-assisted Development
+
+- 개발자가 요구사항, 게임 규칙, 구조, 테스트 합격 기준을 정의했습니다.
+- 생성형 AI는 C++ 초안, 반복 구현, 리팩터링 후보와 테스트 코드 작성 보조에 활용했습니다.
+- 개발자가 생성 코드를 리뷰하고 실패 로그와 실제 런타임 동작을 기준으로 수정 방향을 결정했습니다.
+- 테스트를 통과시키기 위해 조건을 완화하지 않고 실제 Gameplay 원인을 수정했습니다.
+- 과정은 `Requirements → AI-assisted Implementation → Human Code Review → Build → Automated Test → Play Test → Shipping Verification`입니다.
+- 이 프로젝트는 **Human-directed, AI-assisted, Test-verified** 개발 프로젝트입니다.
+
+## 실행 및 조작
+
+요구 환경은 Windows 10/11, Unreal Engine 5.6, Visual Studio 2022 C++ 게임 개발 도구입니다. `ArenaShooter.uproject`를 열고 `/Game/Variant_Combat/Lvl_Combat`에서 Play를 실행합니다.
 
 | 입력 | 동작 |
 |---|---|
@@ -37,32 +84,32 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_stabl
 | 마우스 | 시점/조준 |
 | 마우스 왼쪽 | 발사 |
 | 마우스 오른쪽 | 재장전 |
-| Enter | 게임 오버/클리어 후 현재 레벨 재시작 |
+| Enter | Game Over / Clear 후 현재 레벨 재시작 |
 
-## 검증
+고부하 환경에서는 저부하 실행 스크립트를 사용할 수 있습니다.
 
 ```powershell
-# Round 1과 Round 1~5 실제 게임 흐름
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_stable_editor.ps1
+```
+
+## Automated Verification
+
+```powershell
+# Runtime combat flow
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_round_one_smoke.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_round_one_smoke.ps1 -AllRounds
 
-# 실제 히트스캔 404발 탄약 밸런스
+# Actual hitscan balance
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_balance_combat_test.ps1
 
-# HUD, 피격/사망, 적 공격, 타입별 시각 구분 캡처
+# 1280×720 rendered QA
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_hud_screenshot.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_combat_feedback_screenshot.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_attack_feedback_screenshot.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_visual_polish_screenshot.ps1
 ```
 
-스크립트는 `Saved/Screenshots`에 1280×720 이미지를 만들고 성공 마커와 파일 생성 여부를 함께 검사합니다. Warm DDC 손상 시 누적 재시도와 격리 Cold DDC 경로를 사용합니다.
-
-## 리소스 안정성
-
-Normal/Fast/Tank의 플레이용 메시와 애니메이션은 `Content/CWSResources/Enemies`에 독립 리소스로 구성되어 있습니다. 현재 Boss는 손상된 전용 파생 데이터의 재로딩을 방지하기 위해 크기를 확대한 Normal 메시 폴백을 사용하며, 보스 전용 체력·3단계 공격 패턴·HUD 마커는 그대로 유지됩니다.
-
-라이플 발사는 Additive 애니메이션을 전신 단독 재생하지 않고 현재 이동 자세를 유지한 채 부착된 무기에 짧은 반동을 적용합니다. 이 방식으로 사격 시 캐릭터가 다른 자세로 바뀌는 문제를 방지합니다.
+스크린샷 테스트는 상태 마커뿐 아니라 완전한 PNG signature와 `IEND` 청크를 검사합니다. 생성 이미지는 `Saved/Screenshots`에서 사람이 직접 확인합니다.
 
 ## Windows Shipping
 
@@ -70,8 +117,6 @@ Normal/Fast/Tank의 플레이용 메시와 애니메이션은 `Content/CWSResour
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_package_windows.ps1
 ```
 
-한글이 포함된 원본 경로의 UnrealBuildTool 문제를 피하기 위해 현재 Git `HEAD`를 임시 ASCII worktree에 체크아웃합니다. 스크립트는 Win64 Shipping Build/Cook/Stage/Pak/Archive 후 실제 패키지 실행 파일에서 Round 1~5 전체 스모크를 수행합니다. 미커밋 맵·에디터 변경은 패키지에 포함되지 않습니다.
+스크립트는 한글 경로에서 발생하는 UnrealBuildTool 문제를 피하기 위해 현재 Git `HEAD`를 임시 ASCII worktree에 체크아웃합니다. Win64 Shipping Build/Cook/Stage/Pak/IoStore/Archive 후 실제 패키지의 `ArenaShooter.exe`에서 전체 라운드 스모크를 실행합니다. 미커밋 변경은 패키지에 포함되지 않습니다.
 
-최신 검증 출시 후보와 포트폴리오용 소개·촬영 흐름은 [빌드 문서](unreal_wave_shooter_dev_docs/11_BuildAndPackaging.md)와 [포트폴리오 문서](unreal_wave_shooter_dev_docs/13_PortfolioAndRelease.md)에 정리되어 있습니다.
-
-전체 설계와 순차 개발 기록은 [개발 문서 인덱스](unreal_wave_shooter_dev_docs/00_README.md)를 참고하세요.
+최신 검증 결과와 배포 체크리스트는 [Build & Packaging](unreal_wave_shooter_dev_docs/11_BuildAndPackaging.md), [Portfolio & Release](unreal_wave_shooter_dev_docs/13_PortfolioAndRelease.md), [Release Checklist](unreal_wave_shooter_dev_docs/14_ReleaseChecklist.md)에 기록합니다. 전체 문서는 [개발 문서 인덱스](unreal_wave_shooter_dev_docs/00_README.md)에서 확인할 수 있습니다.

@@ -3,10 +3,14 @@
 #include "Audio/CWSCombatSound.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/CWSHealthComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "UObject/ConstructorHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCWSBoss, Log, All);
 
@@ -26,14 +30,66 @@ ACWSBossEnemy::ACWSBossEnemy()
 	// archetype distinction without touching that payload.
 	GetMesh()->SetRelativeLocation(FVector(0.0f, 0.0f, -130.0f));
 	GetMesh()->SetRelativeScale3D(FVector(1.65f));
+
+	BossAuraRing = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BossAuraRing"));
+	BossAuraRing->SetupAttachment(GetCapsuleComponent());
+	BossAuraRing->SetRelativeLocation(FVector(0.0f, 0.0f, -124.0f));
+	BossAuraRing->SetRelativeScale3D(FVector(1.65f, 1.65f, 0.035f));
+	BossAuraRing->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BossAuraRing->SetCastShadow(false);
+
+	BossCrown = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BossCrown"));
+	BossCrown->SetupAttachment(GetCapsuleComponent());
+	BossCrown->SetRelativeLocation(FVector(0.0f, 0.0f, 224.0f));
+	BossCrown->SetRelativeRotation(FRotator(180.0f, 0.0f, 0.0f));
+	BossCrown->SetRelativeScale3D(FVector(0.46f, 0.46f, 0.34f));
+	BossCrown->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	BossCrown->SetCastShadow(false);
+
+	BossPhaseLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("BossPhaseLight"));
+	BossPhaseLight->SetupAttachment(GetCapsuleComponent());
+	BossPhaseLight->SetRelativeLocation(FVector(0.0f, 0.0f, 85.0f));
+	BossPhaseLight->SetIntensity(5000.0f);
+	BossPhaseLight->SetAttenuationRadius(480.0f);
+	BossPhaseLight->SetSourceRadius(28.0f);
+	BossPhaseLight->SetCastShadows(false);
+
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> CylinderMeshAsset(
+		TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	static ConstructorHelpers::FObjectFinder<UStaticMesh> ConeMeshAsset(
+		TEXT("/Engine/BasicShapes/Cone.Cone"));
+	static ConstructorHelpers::FObjectFinder<UMaterialInterface> BasicShapeMaterialAsset(
+		TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (CylinderMeshAsset.Succeeded())
+	{
+		BossAuraRing->SetStaticMesh(CylinderMeshAsset.Object);
+	}
+	if (ConeMeshAsset.Succeeded())
+	{
+		BossCrown->SetStaticMesh(ConeMeshAsset.Object);
+	}
+	if (BasicShapeMaterialAsset.Succeeded())
+	{
+		BossAuraRing->SetMaterial(0, BasicShapeMaterialAsset.Object);
+		BossCrown->SetMaterial(0, BasicShapeMaterialAsset.Object);
+	}
 }
 
 void ACWSBossEnemy::BeginPlay()
 {
 	Super::BeginPlay();
+	BossAuraMaterial = BossAuraRing->CreateDynamicMaterialInstance(0);
+	BossCrownMaterial = BossCrown->CreateDynamicMaterialInstance(0);
+	bBossPresentationReady = BossAuraMaterial && BossCrownMaterial &&
+		BossAuraRing->GetStaticMesh() && BossCrown->GetStaticMesh() && BossPhaseLight;
 	HealthComponent->OnHealthChanged.AddUniqueDynamic(this, &ACWSBossEnemy::HandleBossHealthChanged);
 	UpdateBossPhase(HealthComponent->GetHealthPercent());
-	UE_LOG(LogCWSBoss, Display, TEXT("Boss spawned with %.0f health."), HealthComponent->GetMaxHealth());
+	UE_LOG(
+		LogCWSBoss,
+		Display,
+		TEXT("Boss spawned with %.0f health. Presentation=%s"),
+		HealthComponent->GetMaxHealth(),
+		bBossPresentationReady ? TEXT("ready") : TEXT("missing"));
 }
 
 bool ACWSBossEnemy::TryAttack(AActor* TargetActor)
@@ -124,14 +180,64 @@ void ACWSBossEnemy::UpdateBossPhase(const float HealthPercent)
 
 	if (BossPhase == NewPhase)
 	{
+		ApplyBossPhasePresentation();
 		return;
 	}
 
 	BossPhase = NewPhase;
 	GetCharacterMovement()->MaxWalkSpeed = BossPhase == ECWSBossPhase::PhaseTwo ? 320.0f : 380.0f;
 	NextPatternTime = 0.0f;
+	ApplyBossPhasePresentation();
 	OnBossPhaseChanged.Broadcast(BossPhase);
 	UE_LOG(LogCWSBoss, Display, TEXT("Boss entered %s."), *GetBossPhaseLabel());
+}
+
+void ACWSBossEnemy::ApplyBossPhasePresentation()
+{
+	FLinearColor PhaseColor(0.55f, 0.03f, 1.0f);
+	float LightIntensity = 5000.0f;
+	float AuraScale = 1.65f;
+	if (BossPhase == ECWSBossPhase::PhaseTwo)
+	{
+		PhaseColor = FLinearColor(1.0f, 0.22f, 0.015f);
+		LightIntensity = 6800.0f;
+		AuraScale = 1.85f;
+	}
+	else if (BossPhase == ECWSBossPhase::FinalPhase)
+	{
+		PhaseColor = FLinearColor(1.0f, 0.015f, 0.05f);
+		LightIntensity = 9000.0f;
+		AuraScale = 2.05f;
+	}
+
+	if (BossAuraMaterial)
+	{
+		BossAuraMaterial->SetVectorParameterValue(TEXT("Color"), PhaseColor);
+	}
+	if (BossCrownMaterial)
+	{
+		BossCrownMaterial->SetVectorParameterValue(TEXT("Color"), PhaseColor * 1.35f);
+	}
+	if (BossAuraRing)
+	{
+		BossAuraRing->SetRelativeScale3D(FVector(AuraScale, AuraScale, 0.035f));
+	}
+	if (BossPhaseLight)
+	{
+		BossPhaseLight->SetLightColor(PhaseColor);
+		BossPhaseLight->SetIntensity(LightIntensity);
+		BossPhaseLight->SetAttenuationRadius(BossPhase == ECWSBossPhase::FinalPhase ? 650.0f : 500.0f);
+	}
+
+	UE_LOG(
+		LogCWSBoss,
+		Display,
+		TEXT("CWS_BOSS_PRESENTATION_PHASE: %s Color=(%.2f,%.2f,%.2f) AuraScale=%.2f"),
+		*GetBossPhaseLabel(),
+		PhaseColor.R,
+		PhaseColor.G,
+		PhaseColor.B,
+		AuraScale);
 }
 
 bool ACWSBossEnemy::ExecuteGroundSlam(AActor* TargetActor)

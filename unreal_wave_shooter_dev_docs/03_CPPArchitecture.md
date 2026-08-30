@@ -36,10 +36,14 @@ Blueprint
 | `ACWSEnemyAIController` | `AAIController` | 플레이어 추적 및 공격 거리 제어 | 구현 |
 | `ACWSSpawnPoint` | `AActor` | 방향별 스폰 위치 | 구현 |
 | `ACWSWaveManager` | `AActor` | 라운드 진행, 적 스폰, 사망/클리어 판정 | 구현 |
-| `ACWSGameMode` | `AGameModeBase` | Pawn/HUD 지정, 게임 오버·클리어·레벨 재시작, 런타임 스모크 테스트 | 구현 |
+| `ACWSGameMode` | `AGameModeBase` | Pawn/HUD 지정, Player/Wave 연결, 게임 오버·클리어·레벨 재시작 | 구현 |
 | `ACWSHUD` | `AHUD` | 조준점, 체력, 탄창/예비 탄약, 재장전 상태, 라운드, 남은 적 표시 | 구현 |
-| `ACWSBossEnemy` | `ACWSEnemyBase` | 3단계 페이즈, Ground Slam, 넉백 Shockwave | 구현 |
+| `ACWSBossEnemy` | `ACWSEnemyBase` | 3단계 페이즈, Ground Slam, 넉백 Shockwave, 페이즈별 Aura/Crown/Light | 구현 |
 | `ACWSSupplyPickup` | `AActor` | 오버랩 수집, 체력 +40 또는 예비 탄약 +90, 회전/부유 표시 | 구현 |
+| `FCWSGameplayTestCoordinator` | 일반 C++ 클래스 | 명령행 테스트 감지와 전용 Runner 수명 관리 | 구현 |
+| `FCWSCombatSmokeRunner` | 일반 C++ 클래스 | Round 1/전체 라운드 실제 전투 스모크와 프로세스 종료 | 구현 |
+| `FCWSBalanceTestRunner` | 일반 C++ 클래스 | 실제 Hitscan 탄약 경제 검증과 프로세스 종료 | 구현 |
+| `FCWSScreenshotTestRunner` | 일반 C++ 클래스 | HUD/전투/공격/비주얼 캡처 상태와 PNG 무결성 검증 | 구현 |
 
 ## 3. 네이밍 규칙
 
@@ -58,6 +62,7 @@ Blueprint
 ```text
 GameMode BeginPlay
 → WaveManager Initialize
+→ TestCoordinator가 명령행 플래그를 Runner에 위임
 → SpawnPoint 등록
 → StartRound(1)
 → 라운드 정의로 방향별 적 생성
@@ -66,6 +71,18 @@ GameMode BeginPlay
 → RoundClear
 → 다음 라운드 또는 BossRound
 ```
+
+## 4.1 GameMode 리팩터링 전후 책임
+
+| 구분 | 리팩터링 전 | 리팩터링 후 |
+|---|---|---|
+| 런타임 게임 흐름 | Player/Wave 바인딩, 보급, Game Over/Clear, Restart | `ACWSGameMode`에 유지 |
+| Round 1/전체 스모크 | GameMode의 타이머·상태 변수·검증 단계에 혼재 | `FCWSCombatSmokeRunner` |
+| 실제 사격 밸런스 | GameMode가 표적 이동, 발사, 재장전, 수치를 직접 관리 | `FCWSBalanceTestRunner` |
+| 렌더 캡처 | GameMode가 4종 캡처 상태와 파일 종료를 직접 관리 | `FCWSScreenshotTestRunner` |
+| 명령행/프로세스 종료 | GameMode 내부에 플래그 파싱과 `RequestExitWithStatus`가 분산 | `FCWSGameplayTestCoordinator`와 각 Runner |
+
+`ACWSGameMode.cpp`는 약 1,660줄에서 약 200줄 수준으로 줄었다. GameMode는 테스트 이벤트를 Coordinator에 전달할 뿐 테스트 상태를 보유하지 않는다. Runner는 Runtime 상태를 복제하지 않고 GameMode가 연결한 실제 `ACWSWaveManager`, Player, Weapon, Enemy를 사용한다. 테스트에 필요한 접근은 GameMode의 좁은 friend 관계로 제한해 Production API를 추가로 공개하지 않았다.
 
 ## 5. HealthComponent 설계
 
@@ -146,7 +163,7 @@ GameMode BeginPlay
 
 `UCWSHitscanWeaponComponent`는 발사 위치에서 총성을 재생하고 Visibility 라인트레이스 충돌 지점에 충돌음과 `ACWSCombatBurstEffect`를 생성한 뒤 포인트 데미지를 적용한다. 버스트 액터는 충돌 없는 구형 메시를 확장하고 짧은 포인트 라이트를 감쇠시켜 Editor와 Shipping에서 같은 피격/사망 VFX 경로를 사용한다. `UCWSCombatSoundWave`는 44.1 kHz mono PCM을 런타임에 합성한다. `-nullrhi -nosound` 스모크에서는 PCM 큐와 버스트 생성 경로를 카운터로 검사하고, 실제 XAudio2 장치와 렌더링 결과는 별도 오프스크린 캡처로 확인한다.
 
-`ACWSArenaVisualDirector`는 저장된 World Partition 맵 액터를 수정하지 않고 런타임에 중앙 링 24조각, 충돌과 내비게이션을 반영하는 엄폐물 8개, 동서남북 게이트 비콘 8개를 생성한다. `ACWSEnemyBase`는 타입별 머리 위 마커와 발밑 밴드를 함께 생성하며 Normal은 초록, Fast는 주황, Tank는 파랑, Boss는 보라로 구분한다. 이 레이어는 네이티브 코드에서 생성되므로 Editor와 Shipping이 같은 배치를 사용한다.
+`ACWSArenaVisualDirector`는 저장된 World Partition 맵 액터를 수정하지 않고 런타임에 중앙 링 24조각, 충돌과 내비게이션을 반영하는 엄폐물 8개, 동서남북 게이트 비콘 8개를 생성한다. `ACWSEnemyBase`는 타입별 머리 위 마커와 발밑 밴드를 함께 생성하며 Normal은 초록, Fast는 주황, Tank는 파랑, Boss는 보라로 구분한다. Boss는 검증된 Normal 메시 폴백 위에 전용 Crown, 확대 Aura Ring, 고강도 Point Light를 추가하고 Phase 1 보라, Phase 2 주황, Final Phase 적색으로 전환한다. 이 레이어는 네이티브 코드에서 생성되므로 Editor와 Shipping이 같은 배치를 사용한다.
 
 ## 9. 전투 흐름 런타임 검증
 
@@ -157,9 +174,10 @@ GameMode BeginPlay
 - `run_hud_screenshot.ps1`: Round 1 `Preparing` 상태를 1280×720 오프스크린으로 렌더링해 중앙 카운트다운 HUD 스크린샷 생성 검사
 - `run_combat_feedback_screenshot.ps1`: 오프스크린 게임 월드에서 피격 애니메이션과 네이티브 버스트를 예열한 뒤 사망 포즈와 타입 색상 버스트가 함께 보이는 1280×720 스크린샷 생성 검사
 - `run_attack_feedback_screenshot.ps1`: 실제 오디오 장치를 초기화한 오프스크린 게임 월드에서 일반 적의 피해·공격 몽타주·공격음을 검사하고 `MM_Attack_01` 공격 자세가 보이는 1280×720 스크린샷 생성 검사
-- `run_visual_polish_screenshot.ps1`: 중앙 링·엄폐물·방향 비콘과 Normal/Fast/Tank 타입 색상을 검사하고 세 타입이 함께 보이는 1280×720 스크린샷 생성 검사
+- `run_visual_polish_screenshot.ps1`: 중앙 링·엄폐물·방향 비콘과 Normal/Fast/Tank/Boss 표현을 검사하고 Final Phase Boss Aura를 포함한 1280×720 스크린샷 생성 검사
 - `run_balance_combat_test.ps1`: 자동 즉사 대신 플레이어의 실제 `TryFire()`·25 데미지·0.15초 발사 간격·1.2초 재장전·라운드 보급을 사용해 97명을 404회 실제 명중으로 처치하고 탄약 경제를 검사
 - 전체 라운드 검증은 전용 Boss 클래스, 체력 1200, 최종 페이즈 전환, Ground Slam과 Shockwave 피해/넉백 경로도 함께 검사한다.
+- 네 캡처 Runner는 파일 크기만 보지 않고 PNG signature와 마지막 `IEND` 청크가 완전히 기록된 뒤에만 성공 처리한다.
 - Warm DDC 직렬화 오류가 감지되면 스모크 러너가 격리된 Cold DDC로 한 번 자동 재시도한다.
 - `run_repair_combat_input.ps1 -InspectOnly`: `IMC_Combat`의 액션이 없는 손상 매핑 검사
 
@@ -167,13 +185,6 @@ GameMode BeginPlay
 
 무기는 60발 탄창과 시작 예비 탄약 360발(최대 480발)을 사용한다. 재장전은 1.2초 동안 발사를 잠그고 완료 시 필요한 수량만 예비 탄약에서 탄창으로 옮긴다. `ACWSGameMode`는 Round 1~4 클리어 때 홀수 라운드에는 탄약 90발, 짝수 라운드에는 체력 40을 플레이어 전방에 생성한다. 전체 라운드의 완벽 명중 필요량은 404발이고 두 탄약 보급을 포함한 총 예산은 600발이므로, 70% 명중률 기준 필요량 578발을 충족한다.
 
-## 10. 확장 가능 구조
+## 10. 포트폴리오 범위
 
-나중에 아래 기능을 추가하기 쉽도록 만든다.
-
-- 적 타입 추가
-- 무기 타입 추가
-- 난이도 배율
-- 보스 패턴 추가
-- 협동 멀티플레이
-- 미니맵/레이더
+이 저장소는 한 판을 끝까지 플레이하고 자동 검증·Shipping 배포까지 증명하는 단일 수직 슬라이스에 집중한다. Multiplayer, GAS, Inventory, Skill Tree, 새로운 대형 맵 같은 확장은 현재 출시 후보의 범위가 아니다.
