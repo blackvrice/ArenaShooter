@@ -16,6 +16,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 
 복구용 UnrealPak 코어 수는 필요할 때 `-RecoveryPakCoreLimit 1`처럼 1~8 범위에서 조정할 수 있다. 실패한 Cook 결과를 조사하거나 같은 worktree에서 후속 복구를 진행해야 할 때는 `-KeepWorkspace`를 함께 지정한다.
 
+CPU 자체의 접근 위반이나 Oodle 불안정이 이어지는 특정 PC에서는 `-RecoveryAffinityMask <십진수 비트마스크>`로 AutomationTool과 모든 자식 프로세스를 검증한 코어 집합에 제한할 수 있다. 이 값은 CPU 토폴로지마다 다르므로 다른 PC의 값을 그대로 복사하지 않는다.
+
 스크립트는 다음 단계를 한 번에 수행한다.
 
 1. 현재 Git `HEAD`를 임시 ASCII 경로의 detached worktree로 체크아웃한다.

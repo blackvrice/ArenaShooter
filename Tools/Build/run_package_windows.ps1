@@ -8,6 +8,7 @@ param(
     [int]$SmokeTimeoutSeconds = 60,
     [ValidateRange(1, 8)]
     [int]$RecoveryPakCoreLimit = 2,
+    [UInt64]$RecoveryAffinityMask = 0,
     [switch]$ColdDdc,
     [switch]$KeepWorkspace
 )
@@ -21,6 +22,7 @@ $workspacePath = $null
 $worktreeCreated = $false
 $localDdcOverridden = $false
 $previousLocalDdcPath = [Environment]::GetEnvironmentVariable("UE-LocalDataCachePath", "Process")
+$previousProcessorAffinity = $null
 
 if (-not (Test-Path -LiteralPath $projectFile)) {
     throw "ArenaShooter.uproject was not found at $projectFile"
@@ -107,6 +109,13 @@ try {
     }
     $worktreeCreated = $true
 
+    if ($RecoveryAffinityMask -ne 0) {
+        $currentProcess = Get-Process -Id $PID
+        $previousProcessorAffinity = $currentProcess.ProcessorAffinity
+        $currentProcess.ProcessorAffinity = [IntPtr][Int64]$RecoveryAffinityMask
+        Write-Host "Recovery processor affinity mask: $RecoveryAffinityMask"
+    }
+
     $workspaceProject = Join-Path $workspacePath "ArenaShooter.uproject"
     $env:DOTNET_PROCESSOR_COUNT = "1"
     $uatArguments = @(
@@ -143,6 +152,9 @@ try {
     Write-Host "Package executable: $verifiedExe"
 }
 finally {
+    if ($null -ne $previousProcessorAffinity) {
+        (Get-Process -Id $PID).ProcessorAffinity = $previousProcessorAffinity
+    }
     if ($localDdcOverridden) {
         [Environment]::SetEnvironmentVariable("UE-LocalDataCachePath", $previousLocalDdcPath, "Process")
     }
