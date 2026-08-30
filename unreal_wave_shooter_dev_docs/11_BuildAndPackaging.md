@@ -8,6 +8,12 @@
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_package_windows.ps1
 ```
 
+공유 Warm DDC에서 `OodleLZ_Decompress` 또는 `FLargeMemoryReader` 손상이 반복되면 캐시를 삭제하지 않고 격리된 Cold DDC와 저동시성 Cook으로 재시도한다.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_package_windows.ps1 -ColdDdc
+```
+
 스크립트는 다음 단계를 한 번에 수행한다.
 
 1. 현재 Git `HEAD`를 임시 ASCII 경로의 detached worktree로 체크아웃한다.

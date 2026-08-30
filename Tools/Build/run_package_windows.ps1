@@ -6,6 +6,7 @@ param(
     [string]$ExistingPackageDirectory = "",
     [ValidateRange(10, 600)]
     [int]$SmokeTimeoutSeconds = 60,
+    [switch]$ColdDdc,
     [switch]$KeepWorkspace
 )
 
@@ -120,6 +121,9 @@ try {
         "-utf8output",
         "-NoXGE"
     )
+    if ($ColdDdc) {
+        $uatArguments += "-AdditionalCookerOptions=-DDC=Cold -ReduceThreadUsage"
+    }
 
     & $runUat @uatArguments
     if ($LASTEXITCODE -ne 0) {
