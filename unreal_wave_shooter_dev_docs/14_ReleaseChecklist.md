@@ -10,7 +10,7 @@
 | Target Branch | `master` |
 | Engine | Unreal Engine 5.6 |
 
-아래 자산은 포트폴리오 코드 커밋 `6ce5ed6`을 직접 Shipping 패키징하고 실행 검증한 결과다. 이후 문서 전용 커밋이 추가되어도 Release 자산의 소스 커밋은 `6ce5ed6`으로 유지한다.
+아래 자산은 Title을 포함한 포트폴리오 코드 커밋 `500d2d9`을 직접 Shipping 패키징하고 실행 검증한 결과다. 이후 패키징 스크립트·문서 전용 커밋이 추가되어도 게임 바이너리 자산의 소스 커밋은 `500d2d9`로 유지한다.
 
 ## Required validation
 
@@ -55,13 +55,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 
 | 항목 | 검증 기록 |
 |---|---|
-| Source commit | `6ce5ed6` |
-| Archive directory | `C:\ArenaShooterPackages\ArenaShooter-20260830-173452-6ce5ed6` |
+| Source commit | `500d2d9` |
+| Archive directory | `C:\ArenaShooterPackages\ArenaShooter-20260830-235653-500d2d9` |
 | Verified executable | `Windows\ArenaShooter\Binaries\Win64\ArenaShooter-Win64-Shipping.exe` |
 | ZIP path | `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip` |
-| ZIP size | 331,593,727 bytes, 71 entries, PDB 0 |
-| ZIP SHA-256 | `9E130D61386E3CE3535DB9AC0DF9F9F372777229E3763ECD060D18182F945291` |
-| EXE SHA-256 | `5548A2A66376D70A475283B75BA803A3D7E470A048D81FBC9CCF18AEAEBE20D4` |
+| ZIP size | 331,599,624 bytes, 71 entries, PDB 0 |
+| ZIP SHA-256 | `224A860FD0B364740F126C7C7C9BDEB111D3D3A3CF3BD0E271DFFF36E58EED1D` |
+| EXE SHA-256 | `90A1C560DB52D1E5EA35C159A915C75BC8DB6653AE6D67C07038CF7E8BDB90F9` |
 | Packaged smoke marker | `CWS_PACKAGE_VERIFICATION_SUCCESS` |
 
 ## Manual presentation handoff

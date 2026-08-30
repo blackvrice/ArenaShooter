@@ -147,6 +147,11 @@ try {
         throw "Windows Shipping BuildCookRun failed with exit code $LASTEXITCODE."
     }
 
+    if ($null -ne $previousProcessorAffinity) {
+        (Get-Process -Id $PID).ProcessorAffinity = $previousProcessorAffinity
+        $previousProcessorAffinity = $null
+    }
+
     $verifiedExe = Invoke-PackagedSmoke $archiveDirectory
     Write-Host "CWS_PACKAGE_VERIFICATION_SUCCESS: commit $shortCommit was packaged and passed the all-round Shipping smoke test."
     Write-Host "Package executable: $verifiedExe"

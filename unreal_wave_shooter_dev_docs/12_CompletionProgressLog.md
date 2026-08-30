@@ -213,7 +213,7 @@
 
 ## 2026-08-30 - 7단계: 포트폴리오 영상용 Title 화면
 
-상태: Editor 회귀검증 완료 / 최신 Shipping 재검증 대기
+상태: 완료
 
 ### 구현
 
@@ -239,3 +239,14 @@
 - 실제 사격 밸런스 최종 통과: `24 / 40 / 104 / 132 / 104`, 총 404명중/0 miss, 97기.
 - 기존 캡처 최종 통과: HUD 841,432 bytes, Combat 940,429 bytes, Attack 941,238 bytes, Visual 1,100,380 bytes.
 - Warm DDC의 기존 Oodle/`FLargeMemoryReader` 손상은 캡처 러너의 보존 재시도로 복구했다.
+
+### Shipping 검증과 배포 자산
+
+- Title과 `bWaveStartIssued` 수정이 포함된 `500d2d9`을 ASCII detached worktree에서 Win64 Shipping으로 빌드했다.
+- Warm DDC, Oodle ShaderCodeArchive, UHT 접근 위반을 코드 실패와 구분하고, 시스템 캐시를 삭제하지 않은 채 격리 filesystem DDC와 단계별 코어 제한을 적용했다.
+- i7-14700K에서는 검증한 E-core affinity로 Build/Cook을 실행하고 Cook `-corelimit=8`, IoStore/UnrealPak `-corelimit=2`를 적용했다.
+- UnrealHeaderTool과 Shipping/Editor 컴파일, Cook 565개, Stage/Pak/IoStore/Archive가 모두 성공했다.
+- 빌드용 affinity를 상속한 첫 스모크는 60초 제한을 넘었지만, 동일 Shipping EXE를 정상 affinity로 재실행해 7.3초 만에 Round 1~5 종료 코드 0과 `CWS_PACKAGE_VERIFICATION_SUCCESS`를 확인했다.
+- `ArenaShooter-v1.0.0-Windows.zip`을 331,599,624 bytes로 생성하고 71개 엔트리, PDB 0개, 런처/Shipping EXE 각 1개를 확인했다.
+- ZIP SHA-256은 `224A860FD0B364740F126C7C7C9BDEB111D3D3A3CF3BD0E271DFFF36E58EED1D`다.
+- 이전 Title 미포함 ZIP은 `ArenaShooter-v1.0.0-Windows-pre-title-6ce5ed6.zip`으로 보존했다.
