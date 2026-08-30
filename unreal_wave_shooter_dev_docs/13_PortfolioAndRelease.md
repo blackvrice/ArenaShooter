@@ -51,4 +51,4 @@ Unreal Engine 5.6 C++로 구현한 3인칭 아레나 웨이브 슈터로, 8방�
 
 ## 실행과 배포
 
-검증된 실행 파일은 `C:\ArenaShooterPackages\ArenaShooter-20260830-235653-500d2d9\Windows\ArenaShooter.exe`다. 배포 자산은 Title을 포함하고 PDB를 제외한 `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip`이며, 압축 해제 후 `Windows\ArenaShooter.exe`를 실행한다. 상세 해시는 `11_BuildAndPackaging.md`에 기록되어 있다.
+검증된 복구 원본은 `C:\ArenaShooterPackageWork\ArenaShooter-20260830-235653-500d2d9\Saved\StagedBuilds\Windows\ArenaShooter.exe`다. 배포 자산은 Title을 포함하고 PDB를 제외한 `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip`이며, 압축 해제 후 `Windows\ArenaShooter.exe`를 실행한다. 상세 해시는 `11_BuildAndPackaging.md`에 기록되어 있다.

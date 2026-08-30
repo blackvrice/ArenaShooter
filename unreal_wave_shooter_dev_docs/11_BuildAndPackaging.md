@@ -94,16 +94,18 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 - Stage/Pak/IoStore/Archive 성공, IoStore 셰이더 재압축 성공
 - 실제 `ArenaShooter-Win64-Shipping.exe`에서 Round 1~5 스모크 종료 코드 0
 - 성공 마커: `CWS_PACKAGE_VERIFICATION_SUCCESS: existing Shipping package passed the all-round smoke test.`
-- 보존 Archive: `C:\ArenaShooterPackages\ArenaShooter-20260830-235653-500d2d9`
-- 검증 실행 파일: `C:\ArenaShooterPackages\ArenaShooter-20260830-235653-500d2d9\Windows\ArenaShooter\Binaries\Win64\ArenaShooter-Win64-Shipping.exe`
+- 복구 원본 Stage: `C:\ArenaShooterPackageWork\ArenaShooter-20260830-235653-500d2d9\Saved\StagedBuilds`
+- 검증 실행 파일: `C:\ArenaShooterPackageWork\ArenaShooter-20260830-235653-500d2d9\Saved\StagedBuilds\Windows\ArenaShooter\Binaries\Win64\ArenaShooter-Win64-Shipping.exe`
 - 배포 ZIP: `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip`
 - ZIP 구성: 71개 엔트리, PDB 0개, 런처 1개, Shipping EXE 1개
-- ZIP 크기: 331,599,624 bytes
-- ZIP SHA-256: `224A860FD0B364740F126C7C7C9BDEB111D3D3A3CF3BD0E271DFFF36E58EED1D`
+- ZIP 크기: 334,856,723 bytes
+- ZIP SHA-256: `14E78124DE6263E9A2D07368B70ECB19FBB1DACAA01D167BCB0D393FB2AA1CD9`
 - Shipping 실행 파일 SHA-256: `90A1C560DB52D1E5EA35C159A915C75BC8DB6653AE6D67C07038CF7E8BDB90F9`
 - 런처 SHA-256: `E2BA1F2F1728F81849CCD44D5B8CB7F6FA49735576B948ED38581CCFC747848A`
-- 이전 ZIP 백업: `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows-pre-title-6ce5ed6.zip`
+- 복구 요청 시 기존 canonical ZIP과 Archive가 경로에서 확인되지 않아 보존 Stage에서 새로 생성
 
 Warm DDC와 무제한 IoStore 실행에서는 Oodle/`FLargeMemoryReader` 손상이 재현됐고, 한 차례 UHT 접근 위반도 발생했다. 시스템 캐시는 삭제하지 않고 별도 백업으로 보존했다. 격리 DDC와 단계별 코어 제한, E-core affinity를 적용한 실행에서 Cook과 IoStore가 완료됐다. 처음 패키지 스모크는 빌드용 affinity를 상속해 60초 제한을 넘었지만, 동일 Archive를 정상 affinity로 재검증하자 7.3초에 종료 코드 0으로 완료됐다. 이후 스크립트는 패키지 생성 직후 affinity를 복원하고 스모크를 실행하도록 수정했다.
 
 이후 패키징 스크립트와 문서만 보완했으며 게임 바이너리는 바뀌지 않았으므로 Release 자산의 소스 커밋은 `500d2d9`로 기록한다.
+
+2026-08-31 재생성본은 .NET `ZipArchive`로 작성했다. 71개 엔트리와 PDB 0개를 확인한 뒤 별도 폴더에 전체 압축 해제했고, 28개 파일의 길이와 SHA-256을 원본 Stage와 모두 대조했다. `tar.exe -tf` 교차 검사와 압축 해제본의 실제 Shipping Round 1~5 스모크도 통과했다.

@@ -247,6 +247,7 @@
 - i7-14700K에서는 검증한 E-core affinity로 Build/Cook을 실행하고 Cook `-corelimit=8`, IoStore/UnrealPak `-corelimit=2`를 적용했다.
 - UnrealHeaderTool과 Shipping/Editor 컴파일, Cook 565개, Stage/Pak/IoStore/Archive가 모두 성공했다.
 - 빌드용 affinity를 상속한 첫 스모크는 60초 제한을 넘었지만, 동일 Shipping EXE를 정상 affinity로 재실행해 7.3초 만에 Round 1~5 종료 코드 0과 `CWS_PACKAGE_VERIFICATION_SUCCESS`를 확인했다.
-- `ArenaShooter-v1.0.0-Windows.zip`을 331,599,624 bytes로 생성하고 71개 엔트리, PDB 0개, 런처/Shipping EXE 각 1개를 확인했다.
-- ZIP SHA-256은 `224A860FD0B364740F126C7C7C9BDEB111D3D3A3CF3BD0E271DFFF36E58EED1D`다.
-- 이전 Title 미포함 ZIP은 `ArenaShooter-v1.0.0-Windows-pre-title-6ce5ed6.zip`으로 보존했다.
+- 2026-08-31 복구 요청 시 기존 ZIP과 Archive가 경로에서 확인되지 않아 보존된 `Saved\StagedBuilds`에서 .NET `ZipArchive`로 재생성했다.
+- `ArenaShooter-v1.0.0-Windows.zip`은 334,856,723 bytes이며 71개 엔트리, PDB 0개, 런처/Shipping EXE 각 1개다.
+- 별도 폴더에 전체 압축 해제해 28개 파일의 길이와 SHA-256을 원본과 대조하고, 압축 해제본 Shipping EXE의 Round 1~5 스모크를 통과했다.
+- ZIP SHA-256은 `14E78124DE6263E9A2D07368B70ECB19FBB1DACAA01D167BCB0D393FB2AA1CD9`다.

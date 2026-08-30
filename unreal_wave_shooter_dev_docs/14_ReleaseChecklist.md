@@ -56,11 +56,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 | 항목 | 검증 기록 |
 |---|---|
 | Source commit | `500d2d9` |
-| Archive directory | `C:\ArenaShooterPackages\ArenaShooter-20260830-235653-500d2d9` |
+| Recovered staging directory | `C:\ArenaShooterPackageWork\ArenaShooter-20260830-235653-500d2d9\Saved\StagedBuilds` |
 | Verified executable | `Windows\ArenaShooter\Binaries\Win64\ArenaShooter-Win64-Shipping.exe` |
 | ZIP path | `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip` |
-| ZIP size | 331,599,624 bytes, 71 entries, PDB 0 |
-| ZIP SHA-256 | `224A860FD0B364740F126C7C7C9BDEB111D3D3A3CF3BD0E271DFFF36E58EED1D` |
+| ZIP size | 334,856,723 bytes, 71 entries, PDB 0 |
+| ZIP SHA-256 | `14E78124DE6263E9A2D07368B70ECB19FBB1DACAA01D167BCB0D393FB2AA1CD9` |
 | EXE SHA-256 | `90A1C560DB52D1E5EA35C159A915C75BC8DB6653AE6D67C07038CF7E8BDB90F9` |
 | Packaged smoke marker | `CWS_PACKAGE_VERIFICATION_SUCCESS` |
 
