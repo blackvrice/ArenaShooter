@@ -15,7 +15,8 @@ public:
 	explicit FCWSGameplayTestCoordinator(ACWSGameMode& InOwner);
 	~FCWSGameplayTestCoordinator();
 
-	void StartFromCommandLine();
+	bool StartFromCommandLine();
+	bool ShouldKeepTitleScreen() const;
 	void HandleRoundCleared(int32 RoundNumber);
 	void HandleWavePhaseChanged(ECWSWavePhase WavePhase, int32 RoundNumber);
 	void HandleAllRoundsCompleted();

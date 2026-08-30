@@ -40,6 +40,7 @@ private:
 	void Fire(const FInputActionValue& Value);
 	void Reload(const FInputActionValue& Value);
 	void RestartLevel(const FInputActionValue& Value);
+	bool CanUseGameplayInput() const;
 	void UpdateRifleAnimation();
 	void UpdateWeaponRecoil(float DeltaSeconds);
 	void PlayRifleAnimation(UAnimSequence* Animation, bool bLooping, float PlayRate = 1.0f);

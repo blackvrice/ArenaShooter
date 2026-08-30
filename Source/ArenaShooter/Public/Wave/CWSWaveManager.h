@@ -44,6 +44,9 @@ public:
 	bool IsRoundInProgress() const { return bRoundInProgress; }
 
 	UFUNCTION(BlueprintPure, Category = "Wave")
+	bool IsWaveSystemStarted() const { return bWaveSystemStarted; }
+
+	UFUNCTION(BlueprintPure, Category = "Wave")
 	ECWSWavePhase GetWavePhase() const { return CurrentPhase; }
 
 	UFUNCTION(BlueprintPure, Category = "Wave")

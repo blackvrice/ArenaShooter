@@ -12,11 +12,11 @@ Unreal Engine 5.6과 C++로 구현한 3인칭 Arena Wave Shooter입니다. 중�
 
 ## Overview
 
-8방향 스폰에서 진입하는 Normal, Fast, Tank를 히트스캔 라이플로 저지하고, 보급으로 전투 자원을 관리한 뒤 3단계 Boss를 처치하는 웨이브 슈터입니다. 한 판의 시작부터 Final Clear, Game Over, Restart까지 끊김 없는 게임 루프로 완성했습니다.
+Title 화면에서 직접 전투를 시작한 뒤 8방향 스폰에서 진입하는 Normal, Fast, Tank를 히트스캔 라이플로 저지하고, 보급으로 전투 자원을 관리해 3단계 Boss를 처치하는 웨이브 슈터입니다. Title부터 Final Clear, Game Over, Restart까지 끊김 없는 게임 루프로 완성했습니다.
 
 ## Core Gameplay
 
-`Combat → Wave → Supply → Boss → Clear / Game Over → Restart`
+`Title → Combat → Wave → Supply → Boss → Clear / Game Over → Restart`
 
 - Normal은 기본 압박, Fast는 기동 압박, Tank는 높은 체력과 공격력, Boss는 Ground Slam과 Shockwave로 역할이 구분됩니다.
 - 무기는 실제 Visibility 라인트레이스, 60발 탄창, 1.2초 재장전, 예비 탄약을 사용합니다.
@@ -26,18 +26,18 @@ Unreal Engine 5.6과 C++로 구현한 3인칭 Arena Wave Shooter입니다. 중�
 
 1. **Unreal C++ gameplay loop** — Player, Weapon, Enemy AI, Wave 상태 머신, Supply, Boss, HUD를 이벤트 기반으로 연결했습니다.
 2. **실제 Hitscan 탄약 경제 검증** — 계산만 비교하지 않고 `TryFire()`의 라인트레이스·데미지·발사 간격·재장전·보급 경로로 97기를 처치합니다.
-3. **자동 회귀검증** — Round 1/전체 라운드 Smoke, 밸런스, HUD/전투/공격/비주얼 캡처를 테스트 전용 Runner로 분리했습니다.
+3. **자동 회귀검증** — Round 1/전체 라운드 Smoke, 밸런스, Title/HUD/전투/공격/비주얼 캡처를 테스트 전용 Runner로 분리했습니다.
 4. **Windows Shipping 실행 검증** — Build/Cook/Stage/Pak/IoStore/Archive 뒤 패키지 실행 파일에서 Round 1~5를 다시 검증합니다.
 
 ## Architecture
 
-`ACWSGameMode`는 Player/Wave 연결, Round Clear, Game Over, Restart 같은 런타임 흐름만 담당합니다. 명령행 검증은 `FCWSGameplayTestCoordinator`가 감지하고 아래 Runner에 위임합니다.
+`ACWSGameMode`는 Title 시작 상태, Player/Wave 연결, Round Clear, Game Over, Restart 같은 런타임 흐름만 담당합니다. 명령행 검증은 `FCWSGameplayTestCoordinator`가 감지하고 아래 Runner에 위임합니다.
 
 | Runner | 책임 |
 |---|---|
 | `FCWSCombatSmokeRunner` | Round 1, Round 1~5, 사망/재시작, 전투 피드백, 보급, 적 타입, Boss 패턴 |
 | `FCWSBalanceTestRunner` | 실제 Hitscan 404발과 70% 명중률 기준 탄약 경제 |
-| `FCWSScreenshotTestRunner` | HUD, 피격/사망, 적 공격, 아레나·4종 적 시각 QA와 PNG 무결성 |
+| `FCWSScreenshotTestRunner` | Title→Round 1, HUD, 피격/사망, 적 공격, 아레나·4종 적 시각 QA와 PNG 무결성 |
 
 Production gameplay 상태를 테스트에 복제하지 않고 실제 Weapon, Enemy, Wave 객체를 사용합니다. 상세 책임 비교는 [C++ Architecture](unreal_wave_shooter_dev_docs/03_CPPArchitecture.md)에 정리했습니다.
 
@@ -57,13 +57,13 @@ Production gameplay 상태를 테스트에 복제하지 않고 실제 Weapon, En
 
 - **문제:** Editor에서 동작하던 Niagara 효과가 Shipping 기본 맵 로드 중 `UNiagaraStatelessEmitter::Serialize`에서 접근 위반을 일으켰습니다.
 - **분석/해결:** PDB와 CrashContext로 스택을 심볼화한 뒤, 피격/사망 효과를 외부 파생 데이터에 의존하지 않는 네이티브 메시·라이트 버스트로 교체했습니다.
-- **검증:** Shipping Build/Cook/Pak 이후 실제 패키지 실행 파일에서 Round 1~5 스모크를 수행합니다.
+- **검증:** Shipping Build/Cook/Pak 이후 실제 패키지 실행 파일에서 Round 1~5 스모크를 수행했습니다.
 
 ### Rifle Animation
 
 - **문제:** Additive 라이플 애니메이션을 전신 단독 재생하면 이동 자세와 캐릭터 실루엣이 깨졌습니다.
 - **해결:** 현재 이동 Pose를 유지하고 부착된 라이플에 짧은 C++ 반동을 적용했습니다.
-- **검증:** 사격 입력, 실제 라인트레이스 피격, 반동 복귀를 전투 스모크와 오프스크린 캡처 경로에서 함께 확인합니다.
+- **검증:** 사격 입력, 실제 라인트레이스 피격, 반동 복귀를 전투 스모크와 오프스크린 캡처 경로에서 함께 확인했습니다.
 
 ## AI-assisted Development
 
@@ -84,7 +84,7 @@ Production gameplay 상태를 테스트에 복제하지 않고 실제 Weapon, En
 | 마우스 | 시점/조준 |
 | 마우스 왼쪽 | 발사 |
 | 마우스 오른쪽 | 재장전 |
-| Enter | Game Over / Clear 후 현재 레벨 재시작 |
+| Enter | Title에서 게임 시작 / Game Over·Clear 후 즉시 재시작 |
 
 고부하 환경에서는 저부하 실행 스크립트를 사용할 수 있습니다.
 
@@ -103,13 +103,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_round
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_balance_combat_test.ps1
 
 # 1280×720 rendered QA
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_title_screenshot.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_hud_screenshot.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_combat_feedback_screenshot.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_attack_feedback_screenshot.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_visual_polish_screenshot.ps1
 ```
 
-스크린샷 테스트는 상태 마커뿐 아니라 완전한 PNG signature와 `IEND` 청크를 검사합니다. 생성 이미지는 `Saved/Screenshots`에서 사람이 직접 확인합니다.
+스크린샷 테스트는 상태 마커뿐 아니라 완전한 PNG signature와 `IEND` 청크를 검사합니다. Title 테스트는 웨이브가 시작되지 않은 대기 화면을 캡처한 뒤 Round 1 준비 상태로 전환되는 것까지 확인합니다. 생성 이미지는 `Saved/Screenshots`에서 사람이 직접 확인합니다.
 
 ## Windows Shipping
 

@@ -59,16 +59,29 @@ FCWSScreenshotTestRunner::~FCWSScreenshotTestRunner() = default;
 
 bool FCWSScreenshotTestRunner::StartFromCommandLine()
 {
+	bTitleScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSTitleScreenshotTest"));
     bHudScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSHUDScreenshotTest"));
     bCombatFeedbackScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSCombatFeedbackScreenshotTest"));
     bAttackFeedbackScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSAttackFeedbackScreenshotTest"));
     bVisualPolishScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSVisualPolishScreenshotTest"));
 
-    if (!bHudScreenshotTest && !bCombatFeedbackScreenshotTest &&
+    if (!bTitleScreenshotTest && !bHudScreenshotTest && !bCombatFeedbackScreenshotTest &&
         !bAttackFeedbackScreenshotTest && !bVisualPolishScreenshotTest)
     {
         return false;
     }
+
+	if (bTitleScreenshotTest)
+	{
+		TitleScreenshotStartTime = Owner.GetWorld()->GetTimeSeconds();
+		Owner.GetWorldTimerManager().SetTimer(
+			TitleScreenshotTimer,
+			FTimerDelegate::CreateWeakLambda(&Owner, [this]() { RunTitleScreenshotStep(); }),
+			0.1f,
+			true,
+			0.1f);
+		UE_LOG(LogCWSScreenshotTests, Display, TEXT("CWS_TITLE_SCREENSHOT_STARTED"));
+	}
 
     if (bHudScreenshotTest)
     {
@@ -120,6 +133,100 @@ bool FCWSScreenshotTestRunner::StartFromCommandLine()
 
     return true;
 }
+
+void FCWSScreenshotTestRunner::RunTitleScreenshotStep()
+{
+	if (!bTitleScreenshotTest || bTitleScreenshotRequested || !Owner.GetWorld())
+	{
+		return;
+	}
+
+	Owner.BindGameplayActors();
+	const bool bTitleStateReady = Owner.IsWaitingForStart() && Owner.WaveManager.IsValid() &&
+		Owner.WaveManager->GetCurrentRound() == 0 && !Owner.WaveManager->IsRoundInProgress() &&
+		Owner.ArenaVisualDirector.IsValid() && Owner.ArenaVisualDirector->IsPresentationReady();
+	if (!bTitleStateReady)
+	{
+		if (Owner.GetWorld()->GetTimeSeconds() - TitleScreenshotStartTime > 10.0f)
+		{
+			UE_LOG(LogCWSScreenshotTests, Error, TEXT("CWS_TITLE_SCREENSHOT_FAILURE: title state was not reached"));
+			FPlatformMisc::RequestExitWithStatus(true, 14, TEXT("CWS title screenshot test timed out"));
+		}
+		return;
+	}
+
+	bTitleScreenshotRequested = true;
+	Owner.GetWorldTimerManager().ClearTimer(TitleScreenshotTimer);
+	const FString ScreenshotDirectory = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Screenshots"));
+	IFileManager::Get().MakeDirectory(*ScreenshotDirectory, true);
+	TitleScreenshotPath = FPaths::Combine(ScreenshotDirectory, TEXT("CWSTitleScreen.png"));
+	IFileManager::Get().Delete(*TitleScreenshotPath, false, true);
+	FScreenshotRequest::RequestScreenshot(TitleScreenshotPath, true, false);
+	TitleScreenshotRequestTime = Owner.GetWorld()->GetTimeSeconds();
+	UE_LOG(
+		LogCWSScreenshotTests,
+		Display,
+		TEXT("CWS_TITLE_SCREEN_VERIFIED: waiting for Enter, wave idle, arena presentation ready"));
+	Owner.GetWorldTimerManager().SetTimer(
+		TitleScreenshotExitTimer,
+		FTimerDelegate::CreateWeakLambda(&Owner, [this]() { FinishTitleScreenshotTest(); }),
+		0.25f,
+		true,
+		1.0f);
+}
+
+void FCWSScreenshotTestRunner::FinishTitleScreenshotTest()
+{
+	int64 ScreenshotSize = -1;
+	const bool bPngComplete = IsCompletePng(TitleScreenshotPath, ScreenshotSize);
+	if (!bPngComplete && Owner.GetWorld() &&
+		Owner.GetWorld()->GetTimeSeconds() - TitleScreenshotRequestTime < ScreenshotWriteTimeoutSeconds)
+	{
+		return;
+	}
+	if (!bPngComplete)
+	{
+		Owner.GetWorldTimerManager().ClearTimer(TitleScreenshotExitTimer);
+		UE_LOG(LogCWSScreenshotTests, Error, TEXT("CWS_TITLE_SCREENSHOT_FAILURE: %s Size=%lld"), *TitleScreenshotPath, ScreenshotSize);
+		FPlatformMisc::RequestExitWithStatus(true, 15, TEXT("CWS title screenshot was not written"));
+		return;
+	}
+
+	if (!bTitleStartTriggered)
+	{
+		bTitleStartTriggered = true;
+		Owner.StartGame();
+		return;
+	}
+
+	const bool bStartFlowReady = Owner.IsGameStarted() && Owner.WaveManager.IsValid() &&
+		Owner.WaveManager->GetCurrentRound() == 1 &&
+		(Owner.WaveManager->GetWavePhase() == ECWSWavePhase::Preparing ||
+			Owner.WaveManager->GetWavePhase() == ECWSWavePhase::Active);
+	if (!bStartFlowReady && Owner.GetWorld() &&
+		Owner.GetWorld()->GetTimeSeconds() - TitleScreenshotRequestTime < ScreenshotWriteTimeoutSeconds)
+	{
+		return;
+	}
+
+	Owner.GetWorldTimerManager().ClearTimer(TitleScreenshotExitTimer);
+	if (bStartFlowReady)
+	{
+		UE_LOG(
+			LogCWSScreenshotTests,
+			Display,
+			TEXT("CWS_TITLE_SCREENSHOT_SUCCESS: %s Size=%lld TitleToRoundOne=true"),
+			*TitleScreenshotPath,
+			ScreenshotSize);
+		FPlatformMisc::RequestExitWithStatus(true, 0, TEXT("CWS title screen and start flow verified"));
+	}
+	else
+	{
+		UE_LOG(LogCWSScreenshotTests, Error, TEXT("CWS_TITLE_SCREENSHOT_FAILURE: title did not transition to Round 1"));
+		FPlatformMisc::RequestExitWithStatus(true, 16, TEXT("CWS title start flow failed"));
+	}
+}
+
 void FCWSScreenshotTestRunner::RunHudScreenshotStep()
 {
 	if (!bHudScreenshotTest || bHudScreenshotRequested || !Owner.GetWorld())

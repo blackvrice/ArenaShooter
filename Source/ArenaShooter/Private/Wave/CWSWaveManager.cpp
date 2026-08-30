@@ -7,6 +7,7 @@
 #include "Enemy/CWSTankEnemy.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Game/CWSGameMode.h"
 #include "GameFramework/Pawn.h"
 #include "TimerManager.h"
 #include "Wave/CWSSpawnPoint.h"
@@ -71,7 +72,8 @@ void ACWSWaveManager::BeginPlay()
 {
 	Super::BeginPlay();
 	CacheSpawnPoints();
-	if (bAutoStart)
+	const ACWSGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACWSGameMode>() : nullptr;
+	if (bAutoStart && (!GameMode || GameMode->IsGameStarted()))
 	{
 		GetWorldTimerManager().SetTimer(
 			InitialStartTimerHandle,

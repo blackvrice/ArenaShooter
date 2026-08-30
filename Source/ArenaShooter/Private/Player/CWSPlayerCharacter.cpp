@@ -210,7 +210,7 @@ void ACWSPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 void ACWSPlayerCharacter::Move(const FInputActionValue& Value)
 {
 	const FVector2D MovementVector = Value.Get<FVector2D>();
-	if (!Controller)
+	if (!Controller || !CanUseGameplayInput())
 	{
 		return;
 	}
@@ -223,6 +223,10 @@ void ACWSPlayerCharacter::Move(const FInputActionValue& Value)
 
 void ACWSPlayerCharacter::Look(const FInputActionValue& Value)
 {
+	if (!CanUseGameplayInput())
+	{
+		return;
+	}
 	const FVector2D LookAxisVector = Value.Get<FVector2D>();
 	AddControllerYawInput(LookAxisVector.X);
 	AddControllerPitchInput(LookAxisVector.Y);
@@ -230,7 +234,10 @@ void ACWSPlayerCharacter::Look(const FInputActionValue& Value)
 
 void ACWSPlayerCharacter::StartJump(const FInputActionValue& Value)
 {
-	Jump();
+	if (CanUseGameplayInput())
+	{
+		Jump();
+	}
 }
 
 void ACWSPlayerCharacter::StopJump(const FInputActionValue& Value)
@@ -240,7 +247,7 @@ void ACWSPlayerCharacter::StopJump(const FInputActionValue& Value)
 
 void ACWSPlayerCharacter::Fire(const FInputActionValue& Value)
 {
-	if (HealthComponent->IsAlive())
+	if (CanUseGameplayInput() && HealthComponent->IsAlive())
 	{
 		if (WeaponComponent->TryFire())
 		{
@@ -255,7 +262,7 @@ void ACWSPlayerCharacter::Fire(const FInputActionValue& Value)
 
 void ACWSPlayerCharacter::Reload(const FInputActionValue& Value)
 {
-	if (HealthComponent->IsAlive())
+	if (CanUseGameplayInput() && HealthComponent->IsAlive())
 	{
 		if (WeaponComponent->Reload())
 		{
@@ -381,8 +388,21 @@ void ACWSPlayerCharacter::RestartLevel(const FInputActionValue& Value)
 {
 	if (ACWSGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACWSGameMode>() : nullptr)
 	{
-		GameMode->RestartCurrentLevel();
+		if (GameMode->IsWaitingForStart())
+		{
+			GameMode->StartGame();
+		}
+		else
+		{
+			GameMode->RestartCurrentLevel();
+		}
 	}
+}
+
+bool ACWSPlayerCharacter::CanUseGameplayInput() const
+{
+	const ACWSGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACWSGameMode>() : nullptr;
+	return !GameMode || GameMode->IsGameStarted();
 }
 
 void ACWSPlayerCharacter::HandleDeath(AActor* DeadActor)

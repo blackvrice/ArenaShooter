@@ -20,6 +20,14 @@ void ACWSHUD::DrawHUD()
 
 	const float CenterX = Canvas->ClipX * 0.5f;
 	const float CenterY = Canvas->ClipY * 0.5f;
+	UFont* Font = GEngine->GetMediumFont();
+	const ACWSGameMode* GameMode = GetWorld()->GetAuthGameMode<ACWSGameMode>();
+	if (GameMode && GameMode->IsWaitingForStart())
+	{
+		DrawTitleScreen(Font, CenterX, CenterY);
+		return;
+	}
+
 	DrawLine(CenterX - 8.0f, CenterY, CenterX + 8.0f, CenterY, FLinearColor::White, 1.5f);
 	DrawLine(CenterX, CenterY - 8.0f, CenterX, CenterY + 8.0f, FLinearColor::White, 1.5f);
 
@@ -32,7 +40,6 @@ void ACWSHUD::DrawHUD()
 	ACWSBossEnemy* Boss = FindLivingBoss();
 
 	float TextY = 35.0f;
-	UFont* Font = GEngine->GetMediumFont();
 	if (Health)
 	{
 		DrawText(
@@ -121,7 +128,6 @@ void ACWSHUD::DrawHUD()
 		1.0f,
 		false);
 
-	const ACWSGameMode* GameMode = GetWorld()->GetAuthGameMode<ACWSGameMode>();
 	if ((GameMode && GameMode->IsGameOver()) || (Health && !Health->IsAlive()))
 	{
 		DrawText(TEXT("GAME OVER"), FLinearColor::Red, CenterX - 95.0f, CenterY - 70.0f, Font, 1.8f, false);
@@ -132,6 +138,38 @@ void ACWSHUD::DrawHUD()
 		DrawText(TEXT("ARENA CLEARED"), FLinearColor::Green, CenterX - 130.0f, CenterY - 70.0f, Font, 1.8f, false);
 		DrawText(TEXT("PRESS ENTER TO RESTART"), FLinearColor::White, CenterX - 120.0f, CenterY - 30.0f, Font, 1.0f, false);
 	}
+}
+
+void ACWSHUD::DrawTitleScreen(UFont* Font, const float CenterX, const float CenterY)
+{
+	if (!Font)
+	{
+		return;
+	}
+
+	const FLinearColor BackgroundColor(0.005f, 0.008f, 0.02f, 0.84f);
+	const FLinearColor PanelColor(0.012f, 0.018f, 0.04f, 0.92f);
+	const FLinearColor AccentColor(1.0f, 0.55f, 0.08f);
+	const FLinearColor MutedColor(0.62f, 0.7f, 0.82f);
+	DrawRect(BackgroundColor, 0.0f, 0.0f, Canvas->ClipX, Canvas->ClipY);
+
+	const float PanelWidth = FMath::Min(Canvas->ClipX * 0.72f, 840.0f);
+	const float PanelHeight = FMath::Min(Canvas->ClipY * 0.64f, 430.0f);
+	const float PanelX = CenterX - PanelWidth * 0.5f;
+	const float PanelY = CenterY - PanelHeight * 0.5f;
+	DrawRect(PanelColor, PanelX, PanelY, PanelWidth, PanelHeight);
+	DrawRect(AccentColor, PanelX, PanelY, PanelWidth, 5.0f);
+	DrawRect(AccentColor, PanelX, PanelY + PanelHeight - 3.0f, PanelWidth, 3.0f);
+
+	DrawCenteredText(TEXT("UNREAL ENGINE 5.6  /  C++"), MutedColor, CenterX, PanelY + 42.0f, GEngine->GetSmallFont(), 1.05f);
+	DrawCenteredText(TEXT("ARENA SHOOTER"), FLinearColor::White, CenterX, PanelY + 92.0f, Font, 2.8f);
+	DrawCenteredText(TEXT("5 ROUND ARENA SURVIVAL"), AccentColor, CenterX, PanelY + 178.0f, Font, 1.2f);
+
+	const float RuleWidth = FMath::Min(PanelWidth * 0.58f, 470.0f);
+	DrawRect(FLinearColor(1.0f, 0.55f, 0.08f, 0.65f), CenterX - RuleWidth * 0.5f, PanelY + 224.0f, RuleWidth, 2.0f);
+	DrawCenteredText(TEXT("NORMAL  |  FAST  |  TANK  |  BOSS"), MutedColor, CenterX, PanelY + 247.0f, GEngine->GetSmallFont(), 1.0f);
+	DrawCenteredText(TEXT("PRESS ENTER TO START"), FLinearColor(1.0f, 0.78f, 0.2f), CenterX, PanelY + 306.0f, Font, 1.3f);
+	DrawCenteredText(TEXT("WASD MOVE   |   LMB FIRE   |   RMB RELOAD"), MutedColor, CenterX, PanelY + 361.0f, GEngine->GetSmallFont(), 0.9f);
 }
 
 void ACWSHUD::DrawRoundAnnouncement(

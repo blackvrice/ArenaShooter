@@ -26,7 +26,17 @@ public:
 	ACWSGameMode();
 	virtual ~ACWSGameMode() override;
 
+	virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
 	virtual void BeginPlay() override;
+
+	UFUNCTION(BlueprintPure, Category = "Game Flow")
+	bool IsGameStarted() const { return bGameStarted; }
+
+	UFUNCTION(BlueprintPure, Category = "Game Flow")
+	bool IsWaitingForStart() const { return !bGameStarted && !bGameOver && !bGameCleared; }
+
+	UFUNCTION(BlueprintCallable, Category = "Game Flow")
+	void StartGame();
 
 	UFUNCTION(BlueprintPure, Category = "Game Flow")
 	bool IsGameOver() const { return bGameOver; }
@@ -55,6 +65,7 @@ private:
 	friend class FCWSScreenshotTestRunner;
 
 	void BindGameplayActors();
+	void TryStartWaveSystem();
 	void SpawnRoundClearSupply(int32 RoundNumber);
 
 	UFUNCTION()
@@ -74,6 +85,9 @@ private:
 	TWeakObjectPtr<ACWSArenaVisualDirector> ArenaVisualDirector;
 	FCWSGameplayTestCoordinator* TestCoordinator = nullptr;
 	FTimerHandle GameplayBindTimer;
+	bool bSkipTitleScreen = false;
+	bool bGameStarted = false;
+	bool bWaveStartIssued = false;
 	bool bGameOver = false;
 	bool bGameCleared = false;
 };

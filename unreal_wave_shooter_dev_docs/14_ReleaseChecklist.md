@@ -19,8 +19,8 @@
 - [x] Round 1 `CWS_ROUND_ONE_SMOKE_SUCCESS`
 - [x] Round 1~5 `CWS_ALL_ROUNDS_SMOKE_SUCCESS`
 - [x] 실제 Hitscan `CWS_BALANCE_COMBAT_SUCCESS`
-- [x] HUD/Combat/Attack/Visual 캡처 4종과 유효 PNG 확인
-- [x] 캡처 4종 직접 시각 검수
+- [x] Title/HUD/Combat/Attack/Visual 캡처 5종과 유효 PNG 확인
+- [x] 캡처 5종 직접 시각 검수
 - [x] Shipping Build/Cook/Stage/Pak/IoStore/Archive
 - [x] 패키지 EXE의 Round 1~5 스모크 종료 코드 0
 - [x] 패키징 스크립트의 `CWS_PACKAGE_VERIFICATION_SUCCESS`
@@ -43,9 +43,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 - Normal / Fast / Tank / Boss 4종 적과 3단계 Boss Phase
 - 실제 Hitscan, 시간 기반 Reload, Ammo / Health Supply
 - Crown, Aura Ring, Point Light와 페이즈 색 전환을 사용한 Boss 표현
+- Enter로 시작하는 영상용 Title 화면과 자동 Title→Round 1 검증
 - GameMode에서 분리한 Combat / Balance / Screenshot QA Runner
 - 실제 사격 404발과 70% 명중률 기준 탄약 경제 자동 검증
-- Round 1, Round 1~5, 사망/재시작, 캡처 4종 회귀검증
+- Round 1, Round 1~5, 사망/재시작, 캡처 5종 회귀검증
 - Windows Shipping 패키지 실행 파일 전체 라운드 검증
 
 ## Release asset record
@@ -66,5 +67,5 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 ## Manual presentation handoff
 
 - Gameplay GIF와 Gameplay Video는 실제 플레이를 녹화한 뒤 README의 TODO를 교체한다.
-- 영상에는 이동/조준, Fire+Hit, Reload, Fast/Tank, Supply, Boss, Ground Slam/Shockwave, Final Clear를 포함한다.
+- 영상은 Title을 3~5초 보여준 뒤 Enter 전환, 이동/조준, Fire+Hit, Reload, Fast/Tank, Supply, Boss, Ground Slam/Shockwave, Final Clear를 포함한다.
 - 배포 전 깨끗한 PC 또는 별도 Windows 계정에서 ZIP 압축 해제 후 실행하는 최종 수동 QA를 권장한다.

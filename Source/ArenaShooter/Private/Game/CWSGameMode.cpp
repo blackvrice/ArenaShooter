@@ -25,6 +25,12 @@ ACWSGameMode::~ACWSGameMode()
 	delete TestCoordinator;
 }
 
+void ACWSGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+	bSkipTitleScreen = UGameplayStatics::HasOption(Options, TEXT("AutoStart"));
+}
+
 void ACWSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
@@ -39,7 +45,16 @@ void ACWSGameMode::BeginPlay()
 		0.1f);
 
 	TestCoordinator = new FCWSGameplayTestCoordinator(*this);
-	TestCoordinator->StartFromCommandLine();
+	const bool bAutomatedTestStarted = TestCoordinator->StartFromCommandLine();
+	const bool bKeepTitleScreen = TestCoordinator->ShouldKeepTitleScreen();
+	if (bSkipTitleScreen || (bAutomatedTestStarted && !bKeepTitleScreen))
+	{
+		StartGame();
+	}
+	else
+	{
+		UE_LOG(LogCWSGame, Display, TEXT("CWS_TITLE_SCREEN_READY: Press Enter to start."));
+	}
 }
 
 void ACWSGameMode::BindGameplayActors()
@@ -90,10 +105,38 @@ void ACWSGameMode::BindGameplayActors()
 		}
 	}
 
+	if (bGameStarted && WaveManager.IsValid())
+	{
+		TryStartWaveSystem();
+	}
+
 	if (WaveManager.IsValid() && PlayerHealth.IsValid())
 	{
 		GetWorldTimerManager().ClearTimer(GameplayBindTimer);
 	}
+}
+
+void ACWSGameMode::StartGame()
+{
+	if (bGameStarted || bGameOver || bGameCleared)
+	{
+		return;
+	}
+
+	bGameStarted = true;
+	TryStartWaveSystem();
+	UE_LOG(LogCWSGame, Display, TEXT("CWS_GAME_STARTED: Title screen confirmed and wave gameplay started."));
+}
+
+void ACWSGameMode::TryStartWaveSystem()
+{
+	if (!bGameStarted || bWaveStartIssued || !WaveManager.IsValid())
+	{
+		return;
+	}
+
+	WaveManager->StartWaveSystem();
+	bWaveStartIssued = WaveManager->IsWaveSystemStarted();
 }
 
 void ACWSGameMode::HandleRoundCleared(const int32 RoundNumber)
@@ -198,6 +241,6 @@ void ACWSGameMode::RestartCurrentLevel()
 	const FString LevelName = UGameplayStatics::GetCurrentLevelName(this, true);
 	if (!LevelName.IsEmpty())
 	{
-		UGameplayStatics::OpenLevel(this, FName(*LevelName), false);
+		UGameplayStatics::OpenLevel(this, FName(*LevelName), false, TEXT("AutoStart=1"));
 	}
 }

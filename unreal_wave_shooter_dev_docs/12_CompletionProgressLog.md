@@ -210,3 +210,32 @@
 - 일부 Skeletal Mesh의 derived data key가 로드 후 달라져 Editor 첫 DDC 구축이 매우 오래 걸린다. 에셋을 UE 5.6에서 안전하게 재저장하고 별도 회귀검증해야 한다.
 - Gameplay GIF와 Video는 실제 사람 조작 촬영이 필요하므로 README에는 깨진 링크 대신 TODO를 유지한다.
 - 현재 GitHub CLI가 인증되지 않아 Release 페이지와 Tag 생성은 수행하지 않았다. 대신 검증 ZIP과 SHA-256, Release notes, 업로드 체크리스트를 준비했다.
+
+## 2026-08-30 - 7단계: 포트폴리오 영상용 Title 화면
+
+상태: Editor 회귀검증 완료 / 최신 Shipping 재검증 대기
+
+### 구현
+
+- 별도 Title 맵이나 Widget 프레임워크를 만들지 않고 기존 `ACWSHUD` Canvas에 반투명 Title 패널을 추가했다.
+- `ARENA SHOOTER`, Unreal Engine 5.6/C++, 5 Round, 4 Enemy Type, `PRESS ENTER TO START`를 1280×720과 1920×1080에서 중앙 정렬되도록 구성했다.
+- Title 대기 중에는 웨이브 시작과 이동/시점/사격/재장전/점프 입력을 막고, Enter가 `ACWSGameMode::StartGame()`을 호출해 Round 1을 시작한다.
+- Game Over/Clear의 Enter 재시작은 `AutoStart=1` URL option으로 Title을 다시 거치지 않고 기존 즉시 재시작 흐름을 유지한다.
+- 자동 테스트는 Title을 자동 통과하고, `-CWSTitleScreenshotTest`만 대기 화면을 유지하도록 Coordinator가 실행 모드를 구분한다.
+- `run_title_screenshot.ps1`를 추가해 wave idle/arena ready 상태, 유효 PNG, Title→Round 1 Preparing 전환을 한 번에 검증한다.
+
+### 수정 중 발견한 회귀
+
+- 초기 구현은 `BindGameplayActors()`가 호출될 때마다 `StartWaveSystem()`을 다시 시도해, 전체 라운드 완료 직후 밸런스 테스트가 새 게임을 시작했다.
+- 첫 밸런스 실행은 Round 1~3 명중 수가 `48 / 80 / 208`로 정확히 2배가 되고 120초를 초과해 실패했다.
+- GameMode에 `bWaveStartIssued` 단발 상태와 `TryStartWaveSystem()`을 추가해 실제 게임 한 번당 웨이브 시작을 한 번만 발행하도록 수정했다. 테스트 조건은 변경하지 않았다.
+
+### Editor 검증
+
+- `ArenaShooterEditor Win64 Development`와 UnrealHeaderTool 성공.
+- Title 캡처 245,123 bytes, `CWS_TITLE_SCREEN_VERIFIED`, `TitleToRoundOne=true`, `CWS_TITLE_SCREENSHOT_SUCCESS` 확인 및 직접 시각 검수.
+- Map Check 오류 0 / 경고 0, 9개 SpawnPoint, `8 / 16 / 24 / 34 / 15`, 총 97기 확인.
+- Round 1과 Round 1~5 스모크 최종 통과.
+- 실제 사격 밸런스 최종 통과: `24 / 40 / 104 / 132 / 104`, 총 404명중/0 miss, 97기.
+- 기존 캡처 최종 통과: HUD 841,432 bytes, Combat 940,429 bytes, Attack 941,238 bytes, Visual 1,100,380 bytes.
+- Warm DDC의 기존 Oodle/`FLargeMemoryReader` 손상은 캡처 러너의 보존 재시도로 복구했다.

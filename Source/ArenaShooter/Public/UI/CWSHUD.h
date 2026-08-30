@@ -19,6 +19,7 @@ public:
 private:
 	ACWSWaveManager* FindWaveManager();
 	ACWSBossEnemy* FindLivingBoss();
+	void DrawTitleScreen(UFont* Font, float CenterX, float CenterY);
 	void DrawRoundAnnouncement(ACWSWaveManager* WaveManager, UFont* Font, float CenterX, float CenterY);
 	void DrawCenteredText(const FString& Text, const FLinearColor& Color, float CenterX, float Y, UFont* Font, float Scale);
 

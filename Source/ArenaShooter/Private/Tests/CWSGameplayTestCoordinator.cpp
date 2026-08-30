@@ -11,12 +11,17 @@ FCWSGameplayTestCoordinator::FCWSGameplayTestCoordinator(ACWSGameMode& InOwner)
 
 FCWSGameplayTestCoordinator::~FCWSGameplayTestCoordinator() = default;
 
-void FCWSGameplayTestCoordinator::StartFromCommandLine()
+bool FCWSGameplayTestCoordinator::StartFromCommandLine()
 {
+	bool bAnyTestStarted = false;
 	CombatSmokeRunner = MakeUnique<FCWSCombatSmokeRunner>(Owner);
 	if (!CombatSmokeRunner->StartFromCommandLine())
 	{
 		CombatSmokeRunner.Reset();
+	}
+	else
+	{
+		bAnyTestStarted = true;
 	}
 
 	BalanceTestRunner = MakeUnique<FCWSBalanceTestRunner>(Owner);
@@ -24,12 +29,26 @@ void FCWSGameplayTestCoordinator::StartFromCommandLine()
 	{
 		BalanceTestRunner.Reset();
 	}
+	else
+	{
+		bAnyTestStarted = true;
+	}
 
 	ScreenshotTestRunner = MakeUnique<FCWSScreenshotTestRunner>(Owner);
 	if (!ScreenshotTestRunner->StartFromCommandLine())
 	{
 		ScreenshotTestRunner.Reset();
 	}
+	else
+	{
+		bAnyTestStarted = true;
+	}
+	return bAnyTestStarted;
+}
+
+bool FCWSGameplayTestCoordinator::ShouldKeepTitleScreen() const
+{
+	return ScreenshotTestRunner && ScreenshotTestRunner->IsTitleScreenshotTestEnabled();
 }
 
 void FCWSGameplayTestCoordinator::HandleRoundCleared(const int32 RoundNumber)

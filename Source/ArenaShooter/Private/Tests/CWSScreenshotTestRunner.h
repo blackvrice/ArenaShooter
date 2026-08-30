@@ -11,8 +11,11 @@ public:
 	explicit FCWSScreenshotTestRunner(ACWSGameMode& InOwner);
 	~FCWSScreenshotTestRunner();
 	bool StartFromCommandLine();
+	bool IsTitleScreenshotTestEnabled() const { return bTitleScreenshotTest; }
 
 private:
+	void RunTitleScreenshotStep();
+	void FinishTitleScreenshotTest();
 	void RunHudScreenshotStep();
 	void FinishHudScreenshotTest();
 	void RunCombatFeedbackScreenshotStep();
@@ -26,6 +29,8 @@ private:
 	TWeakObjectPtr<ACWSEnemyBase> CombatFeedbackScreenshotTarget;
 	TWeakObjectPtr<ACWSEnemyBase> AttackFeedbackScreenshotTarget;
 	TArray<TWeakObjectPtr<ACWSEnemyBase>> VisualPolishScreenshotTargets;
+	FTimerHandle TitleScreenshotTimer;
+	FTimerHandle TitleScreenshotExitTimer;
 	FTimerHandle HudScreenshotTimer;
 	FTimerHandle HudScreenshotExitTimer;
 	FTimerHandle CombatFeedbackScreenshotTimer;
@@ -34,6 +39,8 @@ private:
 	FTimerHandle AttackFeedbackScreenshotExitTimer;
 	FTimerHandle VisualPolishScreenshotTimer;
 	FTimerHandle VisualPolishScreenshotExitTimer;
+	float TitleScreenshotStartTime = 0.0f;
+	float TitleScreenshotRequestTime = 0.0f;
 	float HudScreenshotStartTime = 0.0f;
 	float HudScreenshotRequestTime = 0.0f;
 	float CombatFeedbackScreenshotStartTime = 0.0f;
@@ -42,6 +49,7 @@ private:
 	float AttackFeedbackScreenshotRequestTime = 0.0f;
 	float VisualPolishScreenshotStartTime = 0.0f;
 	float VisualPolishScreenshotRequestTime = 0.0f;
+	FString TitleScreenshotPath;
 	FString HudScreenshotPath;
 	FString CombatFeedbackScreenshotPath;
 	FString AttackFeedbackScreenshotPath;
@@ -49,6 +57,9 @@ private:
 	int32 CombatFeedbackCaptureDelaySteps = 0;
 	int32 AttackFeedbackCaptureDelaySteps = 0;
 	int32 VisualPolishCaptureDelaySteps = 0;
+	bool bTitleScreenshotTest = false;
+	bool bTitleScreenshotRequested = false;
+	bool bTitleStartTriggered = false;
 	bool bHudScreenshotTest = false;
 	bool bHudScreenshotRequested = false;
 	bool bHudSawArenaVisuals = false;

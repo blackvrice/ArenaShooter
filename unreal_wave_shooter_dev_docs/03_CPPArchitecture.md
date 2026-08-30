@@ -76,13 +76,13 @@ GameMode BeginPlay
 
 | 구분 | 리팩터링 전 | 리팩터링 후 |
 |---|---|---|
-| 런타임 게임 흐름 | Player/Wave 바인딩, 보급, Game Over/Clear, Restart | `ACWSGameMode`에 유지 |
+| 런타임 게임 흐름 | Player/Wave 바인딩, 보급, Game Over/Clear, Restart | Title 대기/시작을 포함해 `ACWSGameMode`에 유지 |
 | Round 1/전체 스모크 | GameMode의 타이머·상태 변수·검증 단계에 혼재 | `FCWSCombatSmokeRunner` |
 | 실제 사격 밸런스 | GameMode가 표적 이동, 발사, 재장전, 수치를 직접 관리 | `FCWSBalanceTestRunner` |
-| 렌더 캡처 | GameMode가 4종 캡처 상태와 파일 종료를 직접 관리 | `FCWSScreenshotTestRunner` |
+| 렌더 캡처 | GameMode가 4종 캡처 상태와 파일 종료를 직접 관리 | Title을 포함한 5종을 `FCWSScreenshotTestRunner`가 관리 |
 | 명령행/프로세스 종료 | GameMode 내부에 플래그 파싱과 `RequestExitWithStatus`가 분산 | `FCWSGameplayTestCoordinator`와 각 Runner |
 
-`ACWSGameMode.cpp`는 약 1,660줄에서 약 200줄 수준으로 줄었다. GameMode는 테스트 이벤트를 Coordinator에 전달할 뿐 테스트 상태를 보유하지 않는다. Runner는 Runtime 상태를 복제하지 않고 GameMode가 연결한 실제 `ACWSWaveManager`, Player, Weapon, Enemy를 사용한다. 테스트에 필요한 접근은 GameMode의 좁은 friend 관계로 제한해 Production API를 추가로 공개하지 않았다.
+`ACWSGameMode.cpp`는 약 1,660줄에서 Title 시작 흐름을 포함한 246줄, 헤더는 204줄에서 93줄로 줄었다. GameMode는 테스트 이벤트를 Coordinator에 전달할 뿐 테스트 상태를 보유하지 않는다. Runner는 Runtime 상태를 복제하지 않고 GameMode가 연결한 실제 `ACWSWaveManager`, Player, Weapon, Enemy를 사용한다. 테스트에 필요한 접근은 GameMode의 좁은 friend 관계로 제한해 Production API를 추가로 공개하지 않았다.
 
 ## 5. HealthComponent 설계
 
