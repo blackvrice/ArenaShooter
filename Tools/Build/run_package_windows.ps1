@@ -122,7 +122,7 @@ try {
         "-NoXGE"
     )
     if ($ColdDdc) {
-        $uatArguments += "-AdditionalCookerOptions=-DDC=Cold -ReduceThreadUsage"
+        $uatArguments += "-AdditionalCookerOptions=-DDC=Cold -ReduceThreadUsage -nothreading -ini:Engine:[DevOptions.Shaders]:NumUnusedShaderCompilingThreads=27 -ini:Engine:[DevOptions.Shaders]:NumUnusedShaderCompilingThreadsDuringGame=27"
     }
 
     & $runUat @uatArguments
