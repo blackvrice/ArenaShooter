@@ -61,6 +61,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 | ZIP path | `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip` |
 | ZIP size | 334,856,723 bytes, 71 entries, PDB 0 |
 | ZIP SHA-256 | `14E78124DE6263E9A2D07368B70ECB19FBB1DACAA01D167BCB0D393FB2AA1CD9` |
+| SHA-256 sidecar | `C:\ArenaShooterPackages\ArenaShooter-v1.0.0-Windows.zip.sha256` |
 | EXE SHA-256 | `90A1C560DB52D1E5EA35C159A915C75BC8DB6653AE6D67C07038CF7E8BDB90F9` |
 | Packaged smoke marker | `CWS_PACKAGE_VERIFICATION_SUCCESS` |
 

@@ -31,6 +31,7 @@
 | 12_CompletionProgressLog.md | 남은 개발 항목의 순차 구현·검증 기록 |
 | 13_PortfolioAndRelease.md | 포트폴리오 소개 문안, 촬영 시나리오와 출시 후보 정보 |
 | 14_ReleaseChecklist.md | 태그, 릴리스 이름, 검증 절차, 배포 ZIP 기록 체크리스트 |
+| 15_FinalPortfolioReport.md | 변경 전후, 실제 검증, 기술 부채, 면접 질문과 코드 위치를 포함한 최종 보고서 |
 
 ## AI에게 우선 전달할 핵심 문서
 

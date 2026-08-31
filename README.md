@@ -120,4 +120,4 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Build\run_packag
 
 스크립트는 한글 경로에서 발생하는 UnrealBuildTool 문제를 피하기 위해 현재 Git `HEAD`를 임시 ASCII worktree에 체크아웃합니다. Win64 Shipping Build/Cook/Stage/Pak/IoStore/Archive 후 실제 패키지의 `ArenaShooter.exe`에서 전체 라운드 스모크를 실행합니다. 미커밋 변경은 패키지에 포함되지 않습니다.
 
-최신 검증 결과와 배포 체크리스트는 [Build & Packaging](unreal_wave_shooter_dev_docs/11_BuildAndPackaging.md), [Portfolio & Release](unreal_wave_shooter_dev_docs/13_PortfolioAndRelease.md), [Release Checklist](unreal_wave_shooter_dev_docs/14_ReleaseChecklist.md)에 기록합니다. 전체 문서는 [개발 문서 인덱스](unreal_wave_shooter_dev_docs/00_README.md)에서 확인할 수 있습니다.
+최신 검증 결과와 배포 체크리스트는 [Build & Packaging](unreal_wave_shooter_dev_docs/11_BuildAndPackaging.md), [Portfolio & Release](unreal_wave_shooter_dev_docs/13_PortfolioAndRelease.md), [Release Checklist](unreal_wave_shooter_dev_docs/14_ReleaseChecklist.md)에 기록합니다. 변경 전후 구조, 실제 검증, 기술 부채와 면접 질문은 [Final Portfolio Report](unreal_wave_shooter_dev_docs/15_FinalPortfolioReport.md), 전체 문서는 [개발 문서 인덱스](unreal_wave_shooter_dev_docs/00_README.md)에서 확인할 수 있습니다.
