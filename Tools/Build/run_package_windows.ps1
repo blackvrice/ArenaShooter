@@ -50,7 +50,7 @@ function Invoke-PackagedSmoke([string]$ArchiveDirectory) {
     }
 
     $packagedRun = Start-Process `
-        -FilePath $shippingExe `
+        -FilePath $bootstrapExe `
         -ArgumentList @("-nullrhi", "-unattended", "-nosound", "-nop4", "-CWSAllRoundsSmokeTest") `
         -WorkingDirectory $windowsRoot `
         -WindowStyle Hidden `
@@ -64,7 +64,7 @@ function Invoke-PackagedSmoke([string]$ArchiveDirectory) {
         throw "Packaged all-round smoke failed with exit code $($packagedRun.ExitCode)."
     }
 
-    return $shippingExe
+    return $bootstrapExe
 }
 
 if ($ExistingPackageDirectory) {
