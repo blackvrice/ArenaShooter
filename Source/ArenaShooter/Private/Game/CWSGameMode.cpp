@@ -141,6 +141,19 @@ void ACWSGameMode::TryStartWaveSystem()
 
 void ACWSGameMode::HandleRoundCleared(const int32 RoundNumber)
 {
+	if (!bGameOver && PlayerHealth.IsValid() && PlayerHealth->IsAlive())
+	{
+		const float RestoredHealth = PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
+		UE_LOG(
+			LogCWSGame,
+			Display,
+			TEXT("CWS_ROUND_CLEAR_HEALTH_RESTORED: Round=%d Health=%.1f/%.1f Restored=%.1f"),
+			RoundNumber,
+			PlayerHealth->GetCurrentHealth(),
+			PlayerHealth->GetMaxHealth(),
+			RestoredHealth);
+	}
+
 	SpawnRoundClearSupply(RoundNumber);
 	if (TestCoordinator)
 	{

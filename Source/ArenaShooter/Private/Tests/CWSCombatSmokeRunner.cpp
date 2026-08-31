@@ -66,6 +66,32 @@ void FCWSCombatSmokeRunner::HandleRoundCleared(const int32 RoundNumber)
 {
     SmokeHighestRoundCleared = FMath::Max(SmokeHighestRoundCleared, RoundNumber);
     UE_LOG(LogCWSCombatSmoke, Display, TEXT("Smoke runner observed round %d clear."), RoundNumber);
+	if (bSmokeTestAllRounds && SmokeRoundHealthRestorePreparedForRound == RoundNumber && Owner.PlayerHealth.IsValid())
+	{
+		const float CurrentHealth = Owner.PlayerHealth->GetCurrentHealth();
+		const float MaxHealth = Owner.PlayerHealth->GetMaxHealth();
+		if (FMath::IsNearlyEqual(CurrentHealth, MaxHealth))
+		{
+			++SmokeRoundHealthRestoreVerifiedCount;
+			UE_LOG(
+				LogCWSCombatSmoke,
+				Display,
+				TEXT("CWS_ROUND_CLEAR_HEALTH_RESTORE_VERIFIED: Round=%d Health=%.1f/%.1f"),
+				RoundNumber,
+				CurrentHealth,
+				MaxHealth);
+		}
+		else
+		{
+			UE_LOG(
+				LogCWSCombatSmoke,
+				Error,
+				TEXT("Round %d clear did not fully restore player health: %.1f/%.1f"),
+				RoundNumber,
+				CurrentHealth,
+				MaxHealth);
+		}
+	}
     if (RoundNumber == 1)
     {
         bSmokeRoundOneCleared = true;
@@ -147,6 +173,45 @@ void FCWSCombatSmokeRunner::ConfigureAllRoundsSmokeTimings()
 	}
 	bSmokeTimingsConfigured = true;
 	UE_LOG(LogCWSCombatSmoke, Display, TEXT("All-round smoke timings accelerated."));
+}
+
+void FCWSCombatSmokeRunner::PrepareRoundClearHealthRestoreVerification()
+{
+	if (!bSmokeTestAllRounds || !Owner.WaveManager.IsValid() || !Owner.PlayerHealth.IsValid())
+	{
+		return;
+	}
+
+	const int32 RoundNumber = Owner.WaveManager->GetCurrentRound();
+	if (RoundNumber <= 0 || SmokeRoundHealthRestorePreparedForRound == RoundNumber ||
+		Owner.WaveManager->GetRemainingEnemyCount() != 1)
+	{
+		return;
+	}
+
+	UCWSHealthComponent* Health = Owner.PlayerHealth.Get();
+	if (!Health->IsAlive())
+	{
+		return;
+	}
+
+	const float MaxHealth = Health->GetMaxHealth();
+	Health->ApplyHealthChange(MaxHealth, &Owner);
+	Health->ApplyHealthChange(-FMath::Max(MaxHealth * 0.25f, 1.0f), &Owner);
+	if (FMath::IsNearlyEqual(Health->GetCurrentHealth(), MaxHealth))
+	{
+		return;
+	}
+
+	SmokeRoundHealthRestorePreparedForRound = RoundNumber;
+	++SmokeRoundHealthRestorePreparedCount;
+	UE_LOG(
+		LogCWSCombatSmoke,
+		Display,
+		TEXT("Round %d clear health restore prepared at %.1f/%.1f."),
+		RoundNumber,
+		Health->GetCurrentHealth(),
+		MaxHealth);
 }
 
 
@@ -508,6 +573,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 					bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
 					bSmokeSawBossExplosionSound)
 				{
+					PrepareRoundClearHealthRestoreVerification();
 					Health->Kill(&Owner);
 					continue;
 				}
@@ -555,6 +621,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 			}
 			if (bSmokeSawEnemyAttackDamage && bSmokeSawEnemyAttackAnimation && bSmokeSawEnemyAttackSound)
 			{
+				PrepareRoundClearHealthRestoreVerification();
 				Health->Kill(&Owner);
 			}
 		}
@@ -635,8 +702,9 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 				bSmokeWeaponTargetKilled && bSmokeSawDedicatedBoss && bSmokeSawBossMaxHealth &&
 				bSmokeSawBossFinalPhase && bSmokeSawBossGroundSlamDamage && bSmokeSawBossShockwaveDamage &&
 				bSmokeSawBossExplosionSound &&
+				SmokeRoundHealthRestorePreparedCount == 5 && SmokeRoundHealthRestoreVerifiedCount == 5 &&
 				SmokeHighestRoundCleared == 5 && Owner.bGameCleared,
-			TEXT("Arena presentation, enemy type colors, combat feedback, reload, supplies, round phases, archetypes, boss patterns, and all five rounds were verified"));
+			TEXT("Arena presentation, enemy type colors, combat feedback, reload, supplies, round phases, full health restoration, archetypes, boss patterns, and all five rounds were verified"));
 		return;
 	}
 

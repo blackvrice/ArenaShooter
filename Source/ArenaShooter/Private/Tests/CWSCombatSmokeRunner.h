@@ -24,6 +24,7 @@ public:
 
 private:
 	void ConfigureAllRoundsSmokeTimings();
+	void PrepareRoundClearHealthRestoreVerification();
 	void PrepareSmokeWeaponTarget(ACWSPlayerCharacter* PlayerCharacter);
 	void RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharacter);
 	void RunSmokeSupplyStep(ACWSPlayerCharacter* PlayerCharacter);
@@ -39,6 +40,9 @@ private:
 	int32 SmokeHighestRoundCleared = 0;
 	int32 SmokeAmmoBeforeReload = 0;
 	int32 SmokeReserveBeforeReload = 0;
+	int32 SmokeRoundHealthRestorePreparedForRound = 0;
+	int32 SmokeRoundHealthRestorePreparedCount = 0;
+	int32 SmokeRoundHealthRestoreVerifiedCount = 0;
 	bool bSmokeTestEnabled = false;
 	bool bSmokeTestAllRounds = false;
 	bool bSmokeRestartVerification = false;
