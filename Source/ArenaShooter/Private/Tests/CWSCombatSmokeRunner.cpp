@@ -22,6 +22,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogCWSCombatSmoke, Log, All);
 
 namespace
 {
+	// OpenLevel 뒤 새 GameMode/Runner 인스턴스에서도 Restart 2단계를 이어가기 위한 프로세스 상태입니다.
     bool GCombatSmokeRestartRequested = false;
 }
 
@@ -162,6 +163,7 @@ void FCWSCombatSmokeRunner::ConfigureAllRoundsSmokeTimings()
 		return;
 	}
 
+	// 전체 라운드 모드에서 규칙은 유지하고 대기 시간만 축소한다.
 	for (FCWSRoundDefinition& Round : Owner.WaveManager->Rounds)
 	{
 		Round.PreRoundDelay = 0.05f;
@@ -182,6 +184,8 @@ void FCWSCombatSmokeRunner::PrepareRoundClearHealthRestoreVerification()
 		return;
 	}
 
+	// 마지막 한 적이 남았을 때 플레이어에게 비치명 피해를 만들어, 바로 뒤 RoundClear
+	// 이벤트에서 GameMode가 최대 체력으로 복구했는지 라운드마다 검증한다.
 	const int32 RoundNumber = Owner.WaveManager->GetCurrentRound();
 	if (RoundNumber <= 0 || SmokeRoundHealthRestorePreparedForRound == RoundNumber ||
 		Owner.WaveManager->GetRemainingEnemyCount() != 1)
@@ -222,6 +226,7 @@ void FCWSCombatSmokeRunner::PrepareSmokeWeaponTarget(ACWSPlayerCharacter* Player
 		return;
 	}
 
+	// Wave 적과 분리된 고정 표적을 사용하되 Health/피격/사망 표현은 같은 적 클래스를 사용한다.
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	const FVector TargetLocation = PlayerCharacter->GetActorLocation() + PlayerCharacter->GetActorForwardVector() * 800.0f;
@@ -259,6 +264,7 @@ void FCWSCombatSmokeRunner::RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharac
 		return;
 	}
 
+	// Production 카메라 ray가 표적을 향하게 한 뒤 한 step을 기다리고 실제 TryFire를 호출한다.
 	FVector ViewLocation;
 	FRotator ViewRotation;
 	PlayerController->GetPlayerViewPoint(ViewLocation, ViewRotation);
@@ -277,6 +283,7 @@ void FCWSCombatSmokeRunner::RunSmokeWeaponStep(ACWSPlayerCharacter* PlayerCharac
 	{
 		return;
 	}
+	// 한 발의 결과에서 damage와 동반 피드백 카운터를 함께 관찰한다.
 	if (TargetHealth->GetCurrentHealth() < HealthBeforeShot)
 	{
 		bSmokeSawWeaponDamage = true;
@@ -325,6 +332,7 @@ void FCWSCombatSmokeRunner::RunSmokeSupplyStep(ACWSPlayerCharacter* PlayerCharac
 		return;
 	}
 
+	// 1) Reload가 즉시 채우지 않고 timer 동안 상태를 유지하는지 확인한다.
 	if (!bSmokeReloadStarted)
 	{
 		SmokeAmmoBeforeReload = Weapon->GetCurrentAmmo();
@@ -354,6 +362,7 @@ void FCWSCombatSmokeRunner::RunSmokeSupplyStep(ACWSPlayerCharacter* PlayerCharac
 		return;
 	}
 
+	// 2) Round 1 clear가 만든 실제 Ammo Pickup을 수집한다.
 	if (!bSmokeAmmoSupplyCollected)
 	{
 		if (ACWSSupplyPickup* AmmoSupply = LastRoundSupply.Get())
@@ -371,6 +380,7 @@ void FCWSCombatSmokeRunner::RunSmokeSupplyStep(ACWSPlayerCharacter* PlayerCharac
 		return;
 	}
 
+	// 3) Health Pickup은 체력을 일부 소모한 뒤 실제 증가량으로 확인한다.
 	if (!bSmokeHealthSupplyCollected)
 	{
 		FActorSpawnParameters SpawnParameters;
@@ -412,6 +422,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 		return;
 	}
 
+	// 공통 준비: 실제 월드 객체, Arena 표현, Wave phase, Player를 반복 관찰한다.
 	Owner.BindGameplayActors();
 	ConfigureAllRoundsSmokeTimings();
 	if (Owner.ArenaVisualDirector.IsValid())
@@ -440,6 +451,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 		bSmokeSawPlayer = true;
 	}
 
+	// OpenLevel 뒤의 두 번째 Runner는 플레이 가능한 초기 상태만 확인하고 테스트를 끝낸다.
 	if (bSmokeRestartVerification)
 	{
 		if (PlayerCharacter && Owner.WaveManager.IsValid() && Owner.PlayerHealth.IsValid() && !Owner.bGameOver && !Owner.bGameCleared)
@@ -460,6 +472,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 		RunSmokeSupplyStep(PlayerCharacter);
 	}
 
+	// Wave가 생성한 모든 적을 순회해 이동, 타입별 스탯/표현, 공격과 Boss 계약을 검사한다.
 	for (TActorIterator<ACWSEnemyBase> It(World); It; ++It)
 	{
 		ACWSEnemyBase* Enemy = *It;
@@ -482,6 +495,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 
 		if (bSmokeTestAllRounds)
 		{
+			// AllRounds에서만 후반 라운드 전용 Fast/Tank/Boss 계약을 요구한다.
 			if (ACWSFastEnemy* FastEnemy = Cast<ACWSFastEnemy>(Enemy))
 			{
 				bSmokeSawFastEnemy = true;
@@ -519,6 +533,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 
 			if (ACWSBossEnemy* Boss = Cast<ACWSBossEnemy>(Enemy))
 			{
+				// Boss를 공격 범위에서 직접 실행해 Slam -> Final Phase Shockwave를 실제 피해로 확인한다.
 				bSmokeSawDedicatedBoss = true;
 				bSmokeSawBossMaxHealth = FMath::IsNearlyEqual(Health->GetMaxHealth(), 1200.0f);
 				bSmokeSawBossPresentation = Boss->HasArchetypePresentation() && Boss->HasBossPresentation() &&
@@ -580,6 +595,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 			}
 		}
 
+		// 최초 위치와 비교해 NavMesh 이동을 증명한 뒤 근접 공격 경로를 한 번 실행한다.
 		FVector* StartLocation = SmokeEnemyStartLocations.Find(Enemy);
 		if (!StartLocation)
 		{
@@ -643,6 +659,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 		}
 	}
 
+	// Round 1 모드는 다음 라운드가 섞이기 전에 Wave를 멈추고 GameOver/Restart를 검증한다.
 	if (!bSmokeTestAllRounds && bSmokeRoundOneCleared && !bSmokeStoppedAfterRoundOne && Owner.WaveManager.IsValid())
 	{
 		bSmokeStoppedAfterRoundOne = true;
@@ -686,6 +703,7 @@ void FCWSCombatSmokeRunner::RunCombatSmokeStep()
 		}
 	}
 
+	// AllRounds 성공은 개별 관찰 플래그와 최종 GameMode/Wave 상태를 모두 만족해야 한다.
 	if (bSmokeTestAllRounds && bSmokeAllRoundsCleared)
 	{
 		FinishSmokeTest(

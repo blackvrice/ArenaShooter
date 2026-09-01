@@ -22,6 +22,7 @@
 
 namespace
 {
+	// 생성자에서 사용할 고정 에셋 로더입니다. 실패하면 nullptr을 유지해 표현만 생략합니다.
 	UAnimSequence* LoadRifleAnimation(const TCHAR* AssetPath)
 	{
 		const ConstructorHelpers::FObjectFinder<UAnimSequence> AnimationAsset(AssetPath);
@@ -130,6 +131,7 @@ void ACWSPlayerCharacter::BeginPlay()
 	HealthComponent->OnDeath.AddDynamic(this, &ACWSPlayerCharacter::HandleDeath);
 	WeaponRestRelativeTransform = WeaponMesh->GetRelativeTransform();
 	PlayRifleAnimation(RifleIdleAnimation, true);
+	// 기존 템플릿 입력 에셋을 수정하지 않고 Combat 전용 키 연결을 런타임에 덧붙인다.
 	CombatMappingContext = NewObject<UInputMappingContext>(this, TEXT("CWSCombatMappingContext"));
 	if (FireAction)
 	{
@@ -273,6 +275,7 @@ void ACWSPlayerCharacter::Reload(const FInputActionValue& Value)
 
 void ACWSPlayerCharacter::UpdateRifleAnimation()
 {
+	// Reload 같은 일회성 액션이 끝나기 전에는 locomotion 애니메이션으로 돌아가지 않는다.
 	if (!HealthComponent || !HealthComponent->IsAlive() || !GetWorld() || GetWorld()->GetTimeSeconds() < RifleActionEndTime)
 	{
 		return;
@@ -306,6 +309,7 @@ void ACWSPlayerCharacter::UpdateWeaponRecoil(const float DeltaSeconds)
 	const float NormalizedTime = WeaponRecoilDuration > KINDA_SMALL_NUMBER
 		? WeaponRecoilElapsed / WeaponRecoilDuration
 		: 1.0f;
+	// 짧게 뒤로 차고 천천히 원위치하는 비대칭 곡선으로 총기만 움직인다.
 	const float KickAlpha = NormalizedTime < 0.22f
 		? FMath::InterpEaseOut(0.0f, 1.0f, NormalizedTime / 0.22f, 2.0f)
 		: FMath::Square(1.0f - ((NormalizedTime - 0.22f) / 0.78f));
@@ -364,6 +368,7 @@ void ACWSPlayerCharacter::PlayRifleAction(UAnimSequence* Animation, const float 
 
 	CurrentRifleAnimation = nullptr;
 	const float SafeDuration = FMath::Max(Duration, KINDA_SMALL_NUMBER);
+	// 게임 규칙의 동작 시간과 에셋 길이가 달라도 종료 시점을 일치시키도록 재생률을 보정한다.
 	const float PlayRate = FMath::Max(Animation->GetPlayLength() / SafeDuration, KINDA_SMALL_NUMBER);
 	PlayRifleAnimation(Animation, false, PlayRate);
 	RifleActionEndTime = GetWorld()->GetTimeSeconds() + SafeDuration;
@@ -376,6 +381,7 @@ UAnimSequence* ACWSPlayerCharacter::SelectRifleMovementAnimation() const
 		return RifleIdleAnimation;
 	}
 
+	// 속도를 캐릭터 전/오른쪽 축에 투영해 45도 단위의 8방향 조깅 에셋을 고른다.
 	const FVector Direction = GetVelocity().GetSafeNormal2D();
 	const float ForwardAmount = FVector::DotProduct(GetActorForwardVector(), Direction);
 	const float RightAmount = FVector::DotProduct(GetActorRightVector(), Direction);

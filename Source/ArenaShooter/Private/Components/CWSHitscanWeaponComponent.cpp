@@ -46,6 +46,7 @@ bool UCWSHitscanWeaponComponent::TryFire()
 		return false;
 	}
 
+	// 총구가 아닌 카메라/Controller 시점을 사용해 화면 조준점과 LineTrace를 일치시킨다.
 	FVector ViewLocation = OwningPawn->GetPawnViewLocation();
 	FRotator ViewRotation = OwningPawn->GetViewRotation();
 	if (AController* Controller = OwningPawn->GetController())
@@ -53,6 +54,7 @@ bool UCWSHitscanWeaponComponent::TryFire()
 		Controller->GetPlayerViewPoint(ViewLocation, ViewRotation);
 	}
 
+	// 탄약 차감과 피드백은 명중 여부와 관계없이 유효한 한 발이 발사된 시점에 처리한다.
 	NextAllowedFireTime = World->GetTimeSeconds() + FireInterval;
 	--CurrentAmmo;
 	OnAmmoChanged.Broadcast(CurrentAmmo, MaxAmmo);
@@ -74,6 +76,8 @@ bool UCWSHitscanWeaponComponent::TryFire()
 
 	if (bHit && IsValid(Hit.GetActor()))
 	{
+		// 시각/음향 피드백을 먼저 만들고 Unreal의 표준 PointDamage 이벤트로 피해를 전달한다.
+		// HealthComponent가 이 이벤트를 받아 체력/사망 delegate로 변환한다.
 		if (PlayCWSCombatSound(this, Hit.ImpactPoint, ECWSCombatSoundType::BulletImpact, 0.7f))
 		{
 			++ImpactSoundPlayCount;
@@ -136,6 +140,7 @@ int32 UCWSHitscanWeaponComponent::AddReserveAmmo(const int32 Amount)
 
 void UCWSHitscanWeaponComponent::CompleteReload()
 {
+	// 예비 탄약이 부족한 경우에도 가능한 만큼만 옮기며 총 탄약량은 보존한다.
 	const int32 MissingAmmo = FMath::Max(MaxAmmo - CurrentAmmo, 0);
 	const int32 LoadedAmmo = FMath::Min(MissingAmmo, CurrentReserveAmmo);
 	CurrentAmmo += LoadedAmmo;

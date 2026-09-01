@@ -16,6 +16,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogCWSWave, Log, All);
 
 namespace
 {
+	// 기본 라운드 테이블을 읽기 쉬운 선언 형태로 만드는 로컬 팩토리입니다.
 	FCWSRoundSpawnGroup MakeSpawnGroup(
 		const ECWSSpawnDirection Direction,
 		const int32 Count,
@@ -31,6 +32,8 @@ namespace
 		return Group;
 	}
 
+	// 기존 맵에 저장된 SpawnGroup을 다시 저장하지 않아도 현재 5라운드의
+	// Normal/Fast/Tank/Boss 조합을 적용하기 위한 호환 매핑입니다.
 	ECWSEnemyType GetDefaultEnemyType(
 		const int32 RoundNumber,
 		const ECWSSpawnDirection Direction,
@@ -73,6 +76,8 @@ void ACWSWaveManager::BeginPlay()
 	Super::BeginPlay();
 	CacheSpawnPoints();
 	const ACWSGameMode* GameMode = GetWorld() ? GetWorld()->GetAuthGameMode<ACWSGameMode>() : nullptr;
+	// Title 화면이 있는 GameMode에서는 StartGame이 명시적으로 시작한다.
+	// 다른 테스트 월드에서 GameMode가 없을 때는 bAutoStart 설정을 그대로 존중한다.
 	if (bAutoStart && (!GameMode || GameMode->IsGameStarted()))
 	{
 		GetWorldTimerManager().SetTimer(
@@ -111,6 +116,7 @@ void ACWSWaveManager::StartWaveSystem()
 
 void ACWSWaveManager::StopWaveSystem()
 {
+	// Stop은 GameOver와 EndPlay에서 모두 호출되므로 타이머와 delegate를 멱등하게 정리한다.
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearAllTimersForObject(this);
@@ -145,6 +151,7 @@ void ACWSWaveManager::StartRound(const int32 RoundNumber)
 		return;
 	}
 
+	// 이전 단계에서 남은 콜백이 새 라운드에 침투하지 않도록 모든 phase 타이머를 먼저 지운다.
 	GetWorldTimerManager().ClearTimer(PreRoundTimerHandle);
 	GetWorldTimerManager().ClearTimer(SpawnTimerHandle);
 	GetWorldTimerManager().ClearTimer(PostRoundTimerHandle);
@@ -159,6 +166,7 @@ void ACWSWaveManager::StartRound(const int32 RoundNumber)
 	BuildSpawnQueue(*RoundDefinition);
 	BroadcastRemainingEnemyCount();
 
+	// Preparing 동안 HUD가 countdown을 그릴 수 있고, 타이머 종료 뒤에만 Active로 전환한다.
 	GetWorldTimerManager().SetTimer(
 		PreRoundTimerHandle,
 		this,
@@ -172,6 +180,7 @@ void ACWSWaveManager::StartRound(const int32 RoundNumber)
 
 int32 ACWSWaveManager::GetRemainingEnemyCount() const
 {
+	// 아직 생성되지 않은 큐와 현재 살아 있는 Actor를 모두 포함해야 HUD 수가 줄지 않는다.
 	int32 ValidAliveEnemies = 0;
 	for (const TWeakObjectPtr<AActor>& Enemy : AliveEnemies)
 	{
@@ -211,6 +220,7 @@ float ACWSWaveManager::GetPhaseElapsedTime() const
 
 void ACWSWaveManager::BuildDefaultRounds()
 {
+	// 생성자 기본값입니다. 에디터/Blueprint에서 저장한 Rounds 값은 직렬화 과정에서 덮어씁니다.
 	Rounds.Reset();
 
 	FCWSRoundDefinition Round1;
@@ -308,6 +318,8 @@ void ACWSWaveManager::BuildSpawnQueue(const FCWSRoundDefinition& RoundDefinition
 		MaximumGroupCount = FMath::Max(MaximumGroupCount, Group.Count);
 	}
 
+	// 그룹 하나를 끝까지 생성한 뒤 다음 방향으로 넘어가지 않고, 같은 인덱스의 항목을
+	// 방향별로 한 번씩 넣어 Arena 한쪽에 적이 몰리는 것을 줄인다.
 	for (int32 SpawnIndex = 0; SpawnIndex < MaximumGroupCount; ++SpawnIndex)
 	{
 		for (const FCWSRoundSpawnGroup& Group : RoundDefinition.SpawnGroups)
@@ -354,6 +366,8 @@ void ACWSWaveManager::SpawnNextEnemy()
 		return;
 	}
 
+	// 항목을 먼저 큐에서 제거하므로 GetRemainingEnemyCount는 스폰 성공 뒤 AliveEnemies와
+	// 합쳐도 같은 적을 두 번 세지 않는다.
 	const FPendingSpawn PendingSpawn = PendingSpawns[0];
 	PendingSpawns.RemoveAt(0);
 	ACWSSpawnPoint* SpawnPoint = SelectSpawnPoint(PendingSpawn.Direction);
@@ -382,6 +396,7 @@ void ACWSWaveManager::SpawnNextEnemy()
 			{
 				SpawnedEnemy->SpawnDefaultController();
 			}
+			// OnDeath가 정상 클리어의 주 경로이고, 외부 Destroy는 안전망으로 추적한다.
 			SpawnedEnemy->OnDestroyed.AddDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDestroyed);
 			if (UCWSHealthComponent* Health = SpawnedEnemy->FindComponentByClass<UCWSHealthComponent>())
 			{
@@ -436,6 +451,7 @@ void ACWSWaveManager::SpawnNextEnemy()
 
 void ACWSWaveManager::EvaluateRoundCompletion()
 {
+	// 마지막 스폰과 마지막 적 사망 조건이 모두 만족해야 라운드를 끝낸다.
 	AliveEnemies.RemoveAll([](const TWeakObjectPtr<AActor>& Enemy) { return !Enemy.IsValid(); });
 	if (bRoundInProgress && PendingSpawns.IsEmpty() && AliveEnemies.IsEmpty())
 	{
@@ -450,6 +466,7 @@ void ACWSWaveManager::CompleteCurrentRound()
 		[this](const FCWSRoundDefinition& Definition) { return Definition.RoundNumber == CurrentRound; });
 	if (CurrentRoundIndex == INDEX_NONE || CurrentRoundIndex + 1 >= Rounds.Num())
 	{
+		// 마지막 라운드는 중간 RoundCleared 대기 없이 Completed를 최종 상태로 유지한다.
 		bAllRoundsCompleted = true;
 		bWaveSystemStarted = false;
 		SetWavePhase(ECWSWavePhase::Completed);
@@ -461,6 +478,7 @@ void ACWSWaveManager::CompleteCurrentRound()
 		return;
 	}
 
+	// 중간 라운드는 보급 수집과 HUD 안내를 위한 RoundCleared 구간을 둔다.
 	const float Delay = FMath::Max(Rounds[CurrentRoundIndex].PostRoundDelay, 0.01f);
 	GetWorldTimerManager().SetTimer(PostRoundTimerHandle, this, &ACWSWaveManager::StartNextRound, Delay, false);
 	SetWavePhase(ECWSWavePhase::RoundCleared);
@@ -486,6 +504,7 @@ void ACWSWaveManager::SetWavePhase(const ECWSWavePhase NewPhase)
 		return;
 	}
 
+	// 진입 시각을 함께 기록해 HUD가 별도 타이머 없이 Active 안내 노출 시간을 계산한다.
 	CurrentPhase = NewPhase;
 	PhaseStartedTime = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0f;
 	OnWavePhaseChanged.Broadcast(CurrentPhase, CurrentRound);
@@ -524,6 +543,7 @@ ACWSSpawnPoint* ACWSWaveManager::SelectSpawnPoint(const ECWSSpawnDirection Direc
 		return nullptr;
 	}
 
+	// 동일 방향 SpawnPoint가 여러 개인 맵에서도 매번 첫 지점만 사용하지 않는다.
 	int32& SpawnIndex = DirectionSpawnIndices.FindOrAdd(Direction);
 	ACWSSpawnPoint* SelectedPoint = MatchingPoints[SpawnIndex % MatchingPoints.Num()];
 	++SpawnIndex;
@@ -539,6 +559,7 @@ void ACWSWaveManager::HandleSpawnedEnemyDeath(AActor* DeadActor)
 {
 	if (DeadActor)
 	{
+		// 사망 뒤 이어지는 Destroy가 같은 적을 다시 제거하지 않도록 안전망 delegate를 해제한다.
 		DeadActor->OnDestroyed.RemoveDynamic(this, &ACWSWaveManager::HandleSpawnedEnemyDestroyed);
 	}
 	RemoveTrackedEnemy(DeadActor);

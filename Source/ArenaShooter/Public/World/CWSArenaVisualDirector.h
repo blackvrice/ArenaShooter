@@ -8,6 +8,10 @@ class UInstancedStaticMeshComponent;
 class UPointLightComponent;
 class USceneComponent;
 
+/**
+ * 저장된 World Partition Actor를 수정하지 않고 런타임 장식/엄폐물을 생성합니다.
+ * 중앙 링, 방향 비콘, 충돌 가능한 엄폐물을 Native 구성해 Editor와 Shipping 배치를 맞춥니다.
+ */
 UCLASS()
 class ARENASHOOTER_API ACWSArenaVisualDirector : public AActor
 {

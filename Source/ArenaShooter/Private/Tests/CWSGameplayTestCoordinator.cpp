@@ -13,6 +13,8 @@ FCWSGameplayTestCoordinator::~FCWSGameplayTestCoordinator() = default;
 
 bool FCWSGameplayTestCoordinator::StartFromCommandLine()
 {
+	// 각 Runner가 자신의 플래그만 해석한다. 비활성 Runner는 즉시 해제해 이후 이벤트가
+	// 실수로 전달되지 않도록 하고, 활성 Runner만 GameMode 수명 동안 유지한다.
 	bool bAnyTestStarted = false;
 	CombatSmokeRunner = MakeUnique<FCWSCombatSmokeRunner>(Owner);
 	if (!CombatSmokeRunner->StartFromCommandLine())

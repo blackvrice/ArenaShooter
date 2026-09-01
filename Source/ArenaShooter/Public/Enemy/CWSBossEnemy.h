@@ -27,6 +27,11 @@ enum class ECWSBossPattern : uint8
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSBossPhaseEvent, ECWSBossPhase, NewPhase);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSBossPatternEvent, ECWSBossPattern, Pattern);
 
+/**
+ * 기본 적의 이동/체력 경로 위에 3단계 페이즈와 범위 공격을 추가한 최종 라운드 적입니다.
+ * 체력 비율이 Phase를 결정하고, 페이즈가 올라갈수록 GroundSlam과 Shockwave를
+ * 번갈아 사용합니다. Aura/Crown/Light는 게임 규칙과 분리된 상태 표현입니다.
+ */
 UCLASS(Blueprintable)
 class ARENASHOOTER_API ACWSBossEnemy : public ACWSEnemyBase
 {
@@ -66,6 +71,7 @@ public:
 	FCWSBossPatternEvent OnBossPatternExecuted;
 
 private:
+	/** 공용 HealthComponent 이벤트를 페이즈 전환 입력으로 사용합니다. */
 	UFUNCTION()
 	void HandleBossHealthChanged(
 		AActor* DamagedActor,
@@ -123,7 +129,9 @@ private:
 
 	int32 ExplosionSoundPlayCount = 0;
 
+	// 기본 적의 AttackInterval과 별도로 Boss 패턴 자체의 쿨다운을 제한합니다.
 	float NextPatternTime = 0.0f;
+	// Final Phase에서 두 패턴을 예측 가능하게 번갈아 선택합니다.
 	bool bUseShockwaveNext = false;
 	bool bBossPresentationReady = false;
 };

@@ -35,6 +35,8 @@ void ACWSGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// World Partition 로드와 Pawn 생성 순서가 일정하지 않으므로 즉시 한 번 찾고,
+	// 필수 객체가 모두 연결될 때까지 짧은 간격으로 재시도한다.
 	BindGameplayActors();
 	GetWorldTimerManager().SetTimer(
 		GameplayBindTimer,
@@ -44,6 +46,7 @@ void ACWSGameMode::BeginPlay()
 		true,
 		0.1f);
 
+	// 자동 검증도 별도 가짜 월드가 아니라 아래에서 연결한 실제 게임 객체를 사용한다.
 	TestCoordinator = new FCWSGameplayTestCoordinator(*this);
 	const bool bAutomatedTestStarted = TestCoordinator->StartFromCommandLine();
 	const bool bKeepTitleScreen = TestCoordinator->ShouldKeepTitleScreen();
@@ -59,6 +62,8 @@ void ACWSGameMode::BeginPlay()
 
 void ACWSGameMode::BindGameplayActors()
 {
+	// WaveManager와 PlayerHealth는 각자 자신의 상태를 소유한다. GameMode는 완료/사망
+	// 이벤트만 구독해 상위 게임 흐름으로 번역한다.
 	if (!WaveManager.IsValid())
 	{
 		for (TActorIterator<ACWSWaveManager> It(GetWorld()); It; ++It)
@@ -83,6 +88,8 @@ void ACWSGameMode::BindGameplayActors()
 		}
 	}
 
+	// 맵에 Director가 없으면 플레이어 캡슐 바닥 높이에 런타임 표현 계층을 만든다.
+	// 저장된 World Partition 액터를 수정하지 않아 Editor와 Shipping 구성이 동일하다.
 	if (!ArenaVisualDirector.IsValid())
 	{
 		for (TActorIterator<ACWSArenaVisualDirector> It(GetWorld()); It; ++It)
@@ -141,6 +148,8 @@ void ACWSGameMode::TryStartWaveSystem()
 
 void ACWSGameMode::HandleRoundCleared(const int32 RoundNumber)
 {
+	// 다음 라운드가 즉시 어려워지더라도 이전 라운드 피해가 누적되지 않도록 전투가
+	// 끝난 경계에서만 회복한다. 사망 상태는 ApplyHealthChange로 부활시키지 않는다.
 	if (!bGameOver && PlayerHealth.IsValid() && PlayerHealth->IsAlive())
 	{
 		const float RestoredHealth = PlayerHealth->ApplyHealthChange(PlayerHealth->GetMaxHealth(), this);
@@ -171,6 +180,7 @@ void ACWSGameMode::HandleWavePhaseChanged(const ECWSWavePhase WavePhase, const i
 
 void ACWSGameMode::SpawnRoundClearSupply(const int32 RoundNumber)
 {
+	// 마지막 라운드는 곧바로 Clear로 끝나므로 보급이 필요하지 않다.
 	if (RoundNumber < 1 || RoundNumber >= 5 || bGameOver || !GetWorld())
 	{
 		return;
@@ -196,6 +206,7 @@ void ACWSGameMode::SpawnRoundClearSupply(const int32 RoundNumber)
 		return;
 	}
 
+	// 홀수 라운드는 다음 전투의 탄약을, 짝수 라운드는 생존 여유를 제공한다.
 	const ECWSSupplyType SupplyType = RoundNumber % 2 == 1 ? ECWSSupplyType::Ammo : ECWSSupplyType::Health;
 	Supply->ConfigureSupply(SupplyType);
 	OnSupplySpawned.Broadcast(Supply);
@@ -232,6 +243,7 @@ void ACWSGameMode::HandlePlayerDeath(AActor* DeadActor)
 		return;
 	}
 
+	// 먼저 웨이브를 멈춰 사망 화면 뒤에서 적/타이머가 계속 진행되지 않게 한다.
 	bGameOver = true;
 	if (WaveManager.IsValid())
 	{
@@ -254,6 +266,7 @@ void ACWSGameMode::RestartCurrentLevel()
 	const FString LevelName = UGameplayStatics::GetCurrentLevelName(this, true);
 	if (!LevelName.IsEmpty())
 	{
+		// Restart에서는 Title을 다시 기다리지 않고 곧바로 전투 검증 가능한 상태로 연다.
 		UGameplayStatics::OpenLevel(this, FName(*LevelName), false, TEXT("AutoStart=1"));
 	}
 }

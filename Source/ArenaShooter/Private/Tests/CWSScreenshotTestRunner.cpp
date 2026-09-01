@@ -33,6 +33,7 @@ namespace
 
 	bool IsCompletePng(const FString& Path, int64& OutFileSize)
 	{
+		// 파일 존재만으로 성공 처리하지 않고 PNG 시작 signature와 마지막 IEND chunk를 확인한다.
 		TArray<uint8> Bytes;
 		OutFileSize = IFileManager::Get().FileSize(*Path);
 		if (OutFileSize <= 20 || !FFileHelper::LoadFileToArray(Bytes, *Path) || Bytes.Num() != OutFileSize)
@@ -59,6 +60,7 @@ FCWSScreenshotTestRunner::~FCWSScreenshotTestRunner() = default;
 
 bool FCWSScreenshotTestRunner::StartFromCommandLine()
 {
+	// 각 플래그는 독립 시나리오이며, 활성 시나리오만 자신의 준비 타이머를 시작한다.
 	bTitleScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSTitleScreenshotTest"));
     bHudScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSHUDScreenshotTest"));
     bCombatFeedbackScreenshotTest = FParse::Param(FCommandLine::Get(), TEXT("CWSCombatFeedbackScreenshotTest"));
@@ -136,6 +138,7 @@ bool FCWSScreenshotTestRunner::StartFromCommandLine()
 
 void FCWSScreenshotTestRunner::RunTitleScreenshotStep()
 {
+	// Title 대기 상태와 HUD가 준비된 뒤 캡처를 요청하고 디스크 검증 단계로 넘긴다.
 	if (!bTitleScreenshotTest || bTitleScreenshotRequested || !Owner.GetWorld())
 	{
 		return;
@@ -177,6 +180,7 @@ void FCWSScreenshotTestRunner::RunTitleScreenshotStep()
 
 void FCWSScreenshotTestRunner::FinishTitleScreenshotTest()
 {
+	// 렌더 요청은 비동기이므로 timeout 안에서 완전한 PNG가 보일 때까지 기다린다.
 	int64 ScreenshotSize = -1;
 	const bool bPngComplete = IsCompletePng(TitleScreenshotPath, ScreenshotSize);
 	if (!bPngComplete && Owner.GetWorld() &&
@@ -229,6 +233,7 @@ void FCWSScreenshotTestRunner::FinishTitleScreenshotTest()
 
 void FCWSScreenshotTestRunner::RunHudScreenshotStep()
 {
+	// Round Preparing 상태를 유지해 countdown과 기본 HUD가 함께 보이는 프레임을 만든다.
 	if (!bHudScreenshotTest || bHudScreenshotRequested || !Owner.GetWorld())
 	{
 		return;
@@ -287,6 +292,7 @@ void FCWSScreenshotTestRunner::RunHudScreenshotStep()
 
 void FCWSScreenshotTestRunner::FinishHudScreenshotTest()
 {
+	// 캡처 파일이 완전히 닫힌 뒤에만 성공 marker와 정상 종료 코드를 기록한다.
 	int64 ScreenshotSize = -1;
 	const bool bPngComplete = IsCompletePng(HudScreenshotPath, ScreenshotSize);
 	if (!bPngComplete && Owner.GetWorld() &&
@@ -312,6 +318,7 @@ void FCWSScreenshotTestRunner::FinishHudScreenshotTest()
 
 void FCWSScreenshotTestRunner::RunCombatFeedbackScreenshotStep()
 {
+	// 고정 표적을 실제 hitscan으로 맞혀 피격 반응과 사망 버스트가 한 프레임에 남도록 준비한다.
 	if (!bCombatFeedbackScreenshotTest || bCombatFeedbackScreenshotRequested || !Owner.GetWorld())
 	{
 		return;
@@ -471,6 +478,7 @@ void FCWSScreenshotTestRunner::RunCombatFeedbackScreenshotStep()
 
 void FCWSScreenshotTestRunner::FinishCombatFeedbackScreenshotTest()
 {
+	// Production 피드백 플래그와 완전한 PNG를 모두 만족해야 캡처 성공으로 본다.
 	int64 ScreenshotSize = -1;
 	const bool bPngComplete = IsCompletePng(CombatFeedbackScreenshotPath, ScreenshotSize);
 	if (!bPngComplete && Owner.GetWorld() &&
@@ -506,6 +514,7 @@ void FCWSScreenshotTestRunner::FinishCombatFeedbackScreenshotTest()
 
 void FCWSScreenshotTestRunner::RunAttackFeedbackScreenshotStep()
 {
+	// 일반 적의 실제 공격 경로를 실행한 뒤 읽기 쉬운 공격 pose 시점에 캡처한다.
 	if (!bAttackFeedbackScreenshotTest || bAttackFeedbackScreenshotRequested || !Owner.GetWorld())
 	{
 		return;
@@ -614,6 +623,7 @@ void FCWSScreenshotTestRunner::RunAttackFeedbackScreenshotStep()
 
 void FCWSScreenshotTestRunner::FinishAttackFeedbackScreenshotTest()
 {
+	// 피해/애니메이션/사운드 관찰과 PNG 기록 완료를 함께 검증한다.
 	int64 ScreenshotSize = -1;
 	const bool bPngComplete = IsCompletePng(AttackFeedbackScreenshotPath, ScreenshotSize);
 	if (!bPngComplete && Owner.GetWorld() &&
@@ -649,6 +659,7 @@ void FCWSScreenshotTestRunner::FinishAttackFeedbackScreenshotTest()
 
 void FCWSScreenshotTestRunner::RunVisualPolishScreenshotStep()
 {
+	// Arena 중앙에 모든 아키타입을 배치하고 Boss를 Final Phase로 만든 대표 구도를 준비한다.
 	if (!bVisualPolishScreenshotTest || bVisualPolishScreenshotRequested || !Owner.GetWorld())
 	{
 		return;
@@ -780,6 +791,7 @@ void FCWSScreenshotTestRunner::RunVisualPolishScreenshotStep()
 
 void FCWSScreenshotTestRunner::FinishVisualPolishScreenshotTest()
 {
+	// 배치/색상/Boss 표현 계약과 최종 PNG 무결성을 함께 확인한다.
 	int64 ScreenshotSize = -1;
 	const bool bPngComplete = IsCompletePng(VisualPolishScreenshotPath, ScreenshotSize);
 	if (!bPngComplete && Owner.GetWorld() &&

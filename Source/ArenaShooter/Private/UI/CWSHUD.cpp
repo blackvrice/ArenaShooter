@@ -22,6 +22,7 @@ void ACWSHUD::DrawHUD()
 	const float CenterY = Canvas->ClipY * 0.5f;
 	UFont* Font = GEngine->GetMediumFont();
 	const ACWSGameMode* GameMode = GetWorld()->GetAuthGameMode<ACWSGameMode>();
+	// Title 상태는 전투 HUD와 겹치지 않는 독립 화면으로 그린다.
 	if (GameMode && GameMode->IsWaitingForStart())
 	{
 		DrawTitleScreen(Font, CenterX, CenterY);
@@ -90,6 +91,7 @@ void ACWSHUD::DrawHUD()
 			1.0f,
 			false);
 	}
+	// Wave phase와 남은 시간을 그대로 사용하므로 HUD가 별도 라운드 타이머를 소유하지 않는다.
 	DrawRoundAnnouncement(WaveManager, Font, CenterX, CenterY);
 
 	if (Boss)
@@ -240,6 +242,7 @@ void ACWSHUD::DrawCenteredText(
 
 ACWSWaveManager* ACWSHUD::FindWaveManager()
 {
+	// 캐시는 World 검색 비용을 줄이되 WeakPtr로 레벨 재시작 뒤의 잘못된 참조를 피한다.
 	if (CachedWaveManager.IsValid())
 	{
 		return CachedWaveManager.Get();

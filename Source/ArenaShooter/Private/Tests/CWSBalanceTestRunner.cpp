@@ -53,6 +53,7 @@ void FCWSBalanceTestRunner::ConfigureBalanceCombatTimings()
 		return;
 	}
 
+	// 게임 밸런스 수치는 그대로 두고 대기/스폰 시간만 줄여 테스트 시간을 단축한다.
 	for (FCWSRoundDefinition& Round : Owner.WaveManager->Rounds)
 	{
 		Round.PreRoundDelay = 0.05f;
@@ -77,6 +78,7 @@ void FCWSBalanceTestRunner::RunBalanceCombatStep()
 		return;
 	}
 
+	// 1) 실제 Player/Weapon/WaveManager가 준비될 때까지 기다린다.
 	Owner.BindGameplayActors();
 	ConfigureBalanceCombatTimings();
 	ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(&Owner, 0));
@@ -99,6 +101,7 @@ void FCWSBalanceTestRunner::RunBalanceCombatStep()
 			GetDefault<ACWSSupplyPickup>()->GetAmmoAmount());
 	}
 
+	// 2) GameMode가 실제 라운드 보상으로 생성한 보급을 수집하고 증가량을 기록한다.
 	if (ACWSSupplyPickup* Supply = LastRoundSupply.Get())
 	{
 		const ECWSSupplyType SupplyType = Supply->GetSupplyType();
@@ -126,6 +129,8 @@ void FCWSBalanceTestRunner::RunBalanceCombatStep()
 		Owner.PlayerHealth->ApplyHealthChange(Owner.PlayerHealth->GetMaxHealth(), &Owner);
 	}
 
+	// 3) 전투 변수를 조준/탄약으로 한정하기 위해 AI 이동만 정지시킨다.
+	//    체력, 피격, 사망, Wave 추적은 Production 객체와 이벤트를 그대로 사용한다.
 	TArray<ACWSEnemyBase*> AliveEnemies;
 	for (TActorIterator<ACWSEnemyBase> It(Owner.GetWorld()); It; ++It)
 	{
@@ -150,6 +155,7 @@ void FCWSBalanceTestRunner::RunBalanceCombatStep()
 		}
 	}
 
+	// 4) 현재 표적 하나만 카메라 ray 앞에 두고 나머지는 line trace 밖에 주차한다.
 	const FVector Forward = PlayerCharacter->GetActorForwardVector().GetSafeNormal2D();
 	const FVector Right = FVector::CrossProduct(FVector::UpVector, Forward).GetSafeNormal();
 	int32 ParkedIndex = 0;
@@ -178,6 +184,7 @@ void FCWSBalanceTestRunner::RunBalanceCombatStep()
 			false,
 			nullptr,
 			ETeleportType::TeleportPhysics);
+		// Transform 변경이 충돌/카메라에 반영될 한 step을 준 뒤 실제 TryFire를 호출한다.
 		if (!bBalanceTargetAimPrimed)
 		{
 			bBalanceTargetAimPrimed = true;
@@ -208,6 +215,7 @@ void FCWSBalanceTestRunner::RunBalanceCombatStep()
 		return;
 	}
 
+	// 5) Wave/GameMode의 실제 최종 상태가 모두 완료된 경우에만 수치 검증으로 넘어간다.
 	if (Owner.bGameCleared && Owner.WaveManager->GetWavePhase() == ECWSWavePhase::Completed)
 	{
 		FinishBalanceCombatTest(true, TEXT("all five rounds cleared through actual hitscan damage"));
@@ -225,6 +233,7 @@ void FCWSBalanceTestRunner::FinishBalanceCombatTest(const bool bSucceeded, const
 
 	ACWSPlayerCharacter* PlayerCharacter = Cast<ACWSPlayerCharacter>(UGameplayStatics::GetPlayerPawn(&Owner, 0));
 	UCWSHitscanWeaponComponent* Weapon = PlayerCharacter ? PlayerCharacter->GetWeaponComponent() : nullptr;
+	// 각 라운드 HP 합계를 25 damage로 나눈 실제 최소 명중 수입니다.
 	const TArray<int32> ExpectedRoundShots = {24, 40, 104, 132, 104};
 	bool bRoundShotsMatch = true;
 	for (int32 Index = 0; Index < ExpectedRoundShots.Num(); ++Index)
@@ -248,6 +257,7 @@ void FCWSBalanceTestRunner::FinishBalanceCombatTest(const bool bSucceeded, const
 	const int32 RequiredAtSeventyPercent = FMath::CeilToInt(static_cast<float>(BalanceShotsFired) / 0.70f);
 	const int32 TotalAvailableAmmo = BalanceInitialAmmo + 2 * GetDefault<ACWSSupplyPickup>()->GetAmmoAmount();
 	const int32 RemainingAmmo = Weapon ? Weapon->GetCurrentAmmo() + Weapon->GetReserveAmmo() : -1;
+	// 단순 Clear 여부뿐 아니라 적 구성, 명중 수, 보급 경제, 남은 탄약을 하나의 계약으로 묶는다.
 	const bool bVerified = bSucceeded && bRoundShotsMatch && BalanceShotsFired == 404 && BalanceMissedShots == 0 &&
 		TotalEnemies == 97 && BalanceKillsByType.FindRef(ECWSEnemyType::Normal) == 44 &&
 		BalanceKillsByType.FindRef(ECWSEnemyType::Fast) == 32 && BalanceKillsByType.FindRef(ECWSEnemyType::Tank) == 20 &&

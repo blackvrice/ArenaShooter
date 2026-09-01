@@ -56,6 +56,7 @@ bool ACWSCombatBurstEffect::SpawnBurst(
 
 	FActorSpawnParameters SpawnParameters;
 	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	// 런타임 피드백은 맵 저장/복제 대상이 아니므로 Transient Actor로 생성한다.
 	SpawnParameters.ObjectFlags |= RF_Transient;
 	ACWSCombatBurstEffect* Effect = World->SpawnActor<ACWSCombatBurstEffect>(
 		StaticClass(),
@@ -93,6 +94,7 @@ void ACWSCombatBurstEffect::Tick(const float DeltaSeconds)
 	Super::Tick(DeltaSeconds);
 	ElapsedTime += DeltaSeconds;
 	const float Alpha = FMath::Clamp(ElapsedTime / EffectDuration, 0.0f, 1.0f);
+	// 메시 크기는 단조 증가하고, 라이트는 중앙에서 최대가 되는 한 번의 pulse로 사라진다.
 	const float Pulse = FMath::Sin(Alpha * PI);
 	BurstMesh->SetRelativeScale3D(FVector(FMath::Lerp(0.04f, TargetScale, Alpha)));
 	BurstLight->SetIntensity(InitialLightIntensity * Pulse * (1.0f - Alpha));

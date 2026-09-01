@@ -100,6 +100,7 @@ bool ACWSBossEnemy::TryAttack(AActor* TargetActor)
 		return false;
 	}
 
+	// Phase 1은 Slam, Phase 2는 두 패턴 교대, Final은 더 넓은 Shockwave를 사용한다.
 	ECWSBossPattern Pattern = ECWSBossPattern::GroundSlam;
 	if (BossPhase == ECWSBossPhase::FinalPhase || (BossPhase == ECWSBossPhase::PhaseTwo && bUseShockwaveNext))
 	{
@@ -118,6 +119,7 @@ bool ACWSBossEnemy::TryAttack(AActor* TargetActor)
 	{
 		bUseShockwaveNext = !bUseShockwaveNext;
 	}
+	// 체력이 낮아질수록 같은 패턴도 더 자주 실행해 난이도를 올린다.
 	const float PhaseInterval = BossPhase == ECWSBossPhase::PhaseOne
 		? 2.4f
 		: BossPhase == ECWSBossPhase::PhaseTwo ? 1.8f : 1.1f;
@@ -168,6 +170,7 @@ void ACWSBossEnemy::HandleBossHealthChanged(
 
 void ACWSBossEnemy::UpdateBossPhase(const float HealthPercent)
 {
+	// 경계값은 높은 단계에서 낮은 단계 순으로 검사해 33% 이하가 Final을 유지한다.
 	ECWSBossPhase NewPhase = ECWSBossPhase::PhaseOne;
 	if (HealthPercent <= 0.33f)
 	{
@@ -184,6 +187,7 @@ void ACWSBossEnemy::UpdateBossPhase(const float HealthPercent)
 		return;
 	}
 
+	// 페이즈 진입 즉시 패턴 쿨다운을 해제해 변화가 플레이어에게 바로 체감되게 한다.
 	BossPhase = NewPhase;
 	GetCharacterMovement()->MaxWalkSpeed = BossPhase == ECWSBossPhase::PhaseTwo ? 320.0f : 380.0f;
 	NextPatternTime = 0.0f;
@@ -258,6 +262,7 @@ bool ACWSBossEnemy::ExecuteShockwave(AActor* TargetActor)
 		return false;
 	}
 
+	// 피해와 이동 방해를 같은 성공 경로에서 적용하되, Character가 아닌 대상에는 피해만 준다.
 	UGameplayStatics::ApplyDamage(TargetActor, ShockwaveDamage, GetController(), this, UDamageType::StaticClass());
 	if (ACharacter* TargetCharacter = Cast<ACharacter>(TargetActor))
 	{

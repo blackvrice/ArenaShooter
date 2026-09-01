@@ -11,6 +11,12 @@ class UPointLightComponent;
 class USkeletalMesh;
 class UStaticMeshComponent;
 
+/**
+ * 모든 적이 공유하는 체력, 근접 공격, 애니메이션, 피드백 표현의 기반 클래스입니다.
+ *
+ * AIController는 추적/거리 판단만 하고 실제 공격 쿨다운과 피해 적용은 이 클래스가
+ * 책임집니다. Fast/Tank/Boss는 이 공통 경로를 재사용하면서 능력치와 특수 패턴만 바꿉니다.
+ */
 UCLASS(Blueprintable)
 class ARENASHOOTER_API ACWSEnemyBase : public ACharacter
 {
@@ -23,6 +29,7 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void Tick(float DeltaSeconds) override;
 
+	/** 사거리와 월드 시간 기반 쿨다운이 모두 만족할 때 플레이어에게 피해를 줍니다. */
 	UFUNCTION(BlueprintCallable, Category = "Enemy")
 	virtual bool TryAttack(AActor* TargetActor);
 
@@ -62,6 +69,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Enemy|Feedback")
 	int32 GetAttackSoundPlayCount() const { return AttackSoundPlayCount; }
 
+	/** Screenshot Runner가 실제 공격 애니메이션의 특정 지점을 재현할 때만 사용합니다. */
 	bool StageAttackPoseForCapture(float NormalizedTime);
 
 	UFUNCTION(BlueprintPure, Category = "Enemy|Presentation")
@@ -77,6 +85,7 @@ public:
 	FString GetVisualMeshPath() const;
 
 protected:
+	// HealthComponent 이벤트를 피격/사망 표현으로 번역하는 연결 지점입니다.
 	UFUNCTION()
 	void HandleHealthChanged(
 		AActor* DamagedActor,
@@ -127,6 +136,7 @@ protected:
 	TObjectPtr<UPointLightComponent> ArchetypeLight;
 
 	bool PlayAttackAnimation();
+	/** 파생 적 생성자가 에셋과 상대 Transform을 한 번에 교체하는 공통 설정 함수입니다. */
 	void ConfigureEnemyVisualProfile(
 		USkeletalMesh* MeshAsset,
 		UAnimSequenceBase* IdleAsset,
@@ -145,6 +155,7 @@ private:
 	void UpdateLocomotionAnimation();
 	bool SpawnDeathEffect();
 
+	// Tick 간격이나 프레임률과 무관하게 공격 주기를 유지하기 위한 절대 월드 시각입니다.
 	float NextAllowedAttackTime = 0.0f;
 	float LastObservedHealth = 0.0f;
 	int32 HitReactionCount = 0;
@@ -152,6 +163,7 @@ private:
 	int32 AttackSoundPlayCount = 0;
 	int32 DeathEffectSpawnCount = 0;
 	TObjectPtr<UAnimSequenceBase> CurrentLoopingAnimation;
+	// 피격/공격/사망 애니메이션이 locomotion에 즉시 덮이지 않도록 보호합니다.
 	float ActionAnimationEndTime = 0.0f;
 	bool bHitReactionActive = false;
 	bool bDeathAnimationPlayed = false;

@@ -104,6 +104,7 @@ ACWSEnemyBase::ACWSEnemyBase()
 void ACWSEnemyBase::BeginPlay()
 {
 	Super::BeginPlay();
+	// 색상 마커/밴드는 멀리서도 적 타입을 구분하게 하며 실제 스탯 판정과는 독립적이다.
 	const FLinearColor ArchetypeColor = GetArchetypeColor();
 	UMaterialInstanceDynamic* MarkerMaterial = ArchetypeMarker->CreateDynamicMaterialInstance(0);
 	UMaterialInstanceDynamic* BandMaterial = ArchetypeBand->CreateDynamicMaterialInstance(0);
@@ -127,6 +128,7 @@ void ACWSEnemyBase::BeginPlay()
 	ArchetypeBand->SetRelativeLocation(FVector(0.0f, 0.0f, -CapsuleHalfHeight + 4.0f));
 	ArchetypeMarker->SetRelativeScale3D(FVector(MarkerScale));
 	ArchetypeBand->SetRelativeScale3D(FVector(MarkerScale * 3.0f, MarkerScale * 3.0f, 0.025f));
+	// 이전 체력과 비교해야 회복 이벤트를 피격 반응으로 잘못 재생하지 않는다.
 	LastObservedHealth = HealthComponent->GetCurrentHealth();
 	HealthComponent->OnHealthChanged.AddDynamic(this, &ACWSEnemyBase::HandleHealthChanged);
 	HealthComponent->OnDeath.AddDynamic(this, &ACWSEnemyBase::HandleDeath);
@@ -210,6 +212,7 @@ bool ACWSEnemyBase::TryAttack(AActor* TargetActor)
 		return false;
 	}
 
+	// AI Tick이 자주 호출돼도 공격 속도는 절대 월드 시간으로 제한한다.
 	NextAllowedAttackTime = World->GetTimeSeconds() + AttackInterval;
 	PlayAttackAnimation();
 	if (PlayCWSCombatSound(this, GetActorLocation(), ECWSCombatSoundType::EnemyAttack, 0.8f))
@@ -259,6 +262,7 @@ void ACWSEnemyBase::HandleHealthChanged(
 	const float MaxHealth,
 	AActor* ChangeInstigator)
 {
+	// 치명타는 HandleDeath가 전담하므로 여기서는 살아 있는 상태의 감소만 피격으로 본다.
 	const bool bTookNonLethalDamage = CurrentHealth > 0.0f && CurrentHealth < LastObservedHealth;
 	LastObservedHealth = CurrentHealth;
 	if (!bTookNonLethalDamage || !HitReactionAnimation)
@@ -331,6 +335,7 @@ bool ACWSEnemyBase::PlayActionAnimation(UAnimSequenceBase* Animation)
 	GetMesh()->SetAnimationMode(EAnimationMode::AnimationSingleNode);
 	GetMesh()->PlayAnimation(Animation, false);
 	CurrentLoopingAnimation = nullptr;
+	// 일회성 애니메이션 길이 동안 Idle/Move 선택 로직의 덮어쓰기를 막는다.
 	ActionAnimationEndTime = GetWorld()->GetTimeSeconds() + Animation->GetPlayLength();
 	return true;
 }
@@ -357,6 +362,8 @@ bool ACWSEnemyBase::SpawnDeathEffect()
 
 void ACWSEnemyBase::HandleDeath(AActor* DeadActor)
 {
+	// WaveManager는 Health의 OnDeath에서 즉시 라운드 수를 갱신하고, 이 Actor는
+	// 충돌/AI만 먼저 끈 뒤 2초 동안 사망 표현을 남긴다.
 	GetWorldTimerManager().ClearTimer(HitReactionTimerHandle);
 	bHitReactionActive = false;
 	GetCharacterMovement()->DisableMovement();

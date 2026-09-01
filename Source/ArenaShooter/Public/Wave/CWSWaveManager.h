@@ -14,6 +14,13 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FCWSWavePhaseEvent, ECWSWavePhase, 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCWSWaveSystemCompletedEvent);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCWSBossSpawnedEvent, AActor*, BossActor);
 
+/**
+ * 라운드 정의를 시간 순서대로 실행하고 살아 있는 적을 추적하는 Wave 상태 머신입니다.
+ *
+ * 핵심 흐름은 Preparing -> Active -> RoundCleared -> 다음 Preparing이며,
+ * 마지막 라운드는 Completed로 끝납니다. 적의 HealthComponent OnDeath를 주 경로로,
+ * OnDestroyed를 안전망으로 사용해 남은 적 수가 중복 차감되지 않도록 관리합니다.
+ */
 UCLASS(BlueprintType)
 class ARENASHOOTER_API ACWSWaveManager : public AActor
 {
@@ -25,9 +32,11 @@ public:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	/** 첫 라운드부터 전체 웨이브 흐름을 시작합니다. 이미 시작했으면 아무 일도 하지 않습니다. */
 	UFUNCTION(BlueprintCallable, Category = "Wave")
 	void StartWaveSystem();
 
+	/** 타이머와 적 이벤트 바인딩을 정리하고 추가 스폰을 중단합니다. */
 	UFUNCTION(BlueprintCallable, Category = "Wave")
 	void StopWaveSystem();
 
@@ -55,6 +64,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Wave")
 	float GetPhaseElapsedTime() const;
 
+	// UI와 GameMode는 Tick으로 상태를 추측하지 않고 아래 이벤트를 관찰합니다.
 	UPROPERTY(BlueprintAssignable, Category = "Wave|Events")
 	FCWSRoundEvent OnRoundStarted;
 
@@ -110,6 +120,7 @@ public:
 	ECWSWavePhase CurrentPhase = ECWSWavePhase::Idle;
 
 private:
+	/** 에디터용 정의를 실행 시점의 한 건 단위 작업으로 펼친 내부 큐 항목입니다. */
 	struct FPendingSpawn
 	{
 		ECWSSpawnDirection Direction = ECWSSpawnDirection::North;
@@ -143,8 +154,10 @@ private:
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<ACWSSpawnPoint>> CachedSpawnPoints;
 
+	// Weak 참조를 사용해 외부에서 Destroy된 적이 수명을 연장하지 않도록 합니다.
 	TArray<TWeakObjectPtr<AActor>> AliveEnemies;
 	TArray<FPendingSpawn> PendingSpawns;
+	// 같은 방향에 SpawnPoint가 여러 개면 매번 다음 지점을 고르는 라운드 로빈 인덱스입니다.
 	TMap<ECWSSpawnDirection, int32> DirectionSpawnIndices;
 	FTimerHandle InitialStartTimerHandle;
 	FTimerHandle PreRoundTimerHandle;

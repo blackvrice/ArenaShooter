@@ -18,6 +18,7 @@ enum class ECWSSpawnDirection : uint8
 	Center UMETA(DisplayName = "Center")
 };
 
+/** HUD와 GameMode가 관찰하는 WaveManager의 명시적 상태 머신입니다. */
 UENUM(BlueprintType)
 enum class ECWSWavePhase : uint8
 {
@@ -29,6 +30,7 @@ enum class ECWSWavePhase : uint8
 	Stopped UMETA(DisplayName = "Stopped")
 };
 
+/** 같은 방향/적 타입/간격을 공유하는 라운드 내 스폰 묶음입니다. */
 USTRUCT(BlueprintType)
 struct ARENASHOOTER_API FCWSRoundSpawnGroup
 {
@@ -50,6 +52,7 @@ struct ARENASHOOTER_API FCWSRoundSpawnGroup
 	bool bUseBossClass = false;
 };
 
+/** 준비 시간부터 클리어 후 대기 시간까지 한 라운드의 전체 규칙입니다. */
 USTRUCT(BlueprintType)
 struct ARENASHOOTER_API FCWSRoundDefinition
 {

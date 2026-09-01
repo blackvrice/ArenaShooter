@@ -88,6 +88,7 @@ bool ACWSSupplyPickup::TryCollect(AActor* Collector)
 		bApplied = Weapon->AddReserveAmmo(AmmoAmount) > 0;
 	}
 
+	// 체력/예비 탄약이 이미 가득 찼다면 나중에 다시 쓸 수 있도록 Pickup을 남긴다.
 	if (!bApplied)
 	{
 		return false;

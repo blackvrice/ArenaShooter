@@ -29,6 +29,7 @@ void ACWSEnemyAIController::Tick(const float DeltaSeconds)
 		return;
 	}
 
+	// 제곱 거리를 사용해 매 Tick의 불필요한 sqrt를 피한다.
 	const float DistanceSquared = FVector::DistSquared(Enemy->GetActorLocation(), PlayerPawn->GetActorLocation());
 	if (DistanceSquared <= FMath::Square(Enemy->GetAttackRange()))
 	{
@@ -37,5 +38,6 @@ void ACWSEnemyAIController::Tick(const float DeltaSeconds)
 		return;
 	}
 
+	// AcceptanceRadius를 공격 거리보다 작게 둬 NavMesh 경계 오차가 있어도 TryAttack 범위에 진입한다.
 	MoveToActor(PlayerPawn, Enemy->GetAttackRange() * 0.75f, true, true, true, nullptr, true);
 }

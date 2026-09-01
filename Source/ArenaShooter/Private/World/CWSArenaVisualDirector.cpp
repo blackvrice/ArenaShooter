@@ -53,6 +53,7 @@ ACWSArenaVisualDirector::ACWSArenaVisualDirector()
 		}
 	}
 
+	// 하나의 ISM 컴포넌트에 반복 메시를 넣어 24개 개별 Actor보다 렌더/관리 비용을 줄인다.
 	constexpr int32 RingSegments = 24;
 	constexpr float RingRadius = 720.0f;
 	for (int32 Index = 0; Index < RingSegments; ++Index)
@@ -63,6 +64,7 @@ ACWSArenaVisualDirector::ACWSArenaVisualDirector()
 		CenterRing->AddInstance(FTransform(Rotation, Location, FVector(1.85f, 0.08f, 0.035f)));
 	}
 
+	// 엄폐물만 충돌과 Navigation 영향을 켜고 장식용 링/비콘은 완전히 비충돌로 둔다.
 	const TArray<FTransform> CoverTransforms = {
 		FTransform(FRotator(0.0f, 15.0f, 0.0f), FVector(-720.0f, 520.0f, 55.0f), FVector(2.6f, 0.55f, 1.1f)),
 		FTransform(FRotator(0.0f, -15.0f, 0.0f), FVector(720.0f, 520.0f, 55.0f), FVector(2.6f, 0.55f, 1.1f)),
