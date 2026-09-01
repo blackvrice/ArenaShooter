@@ -2,9 +2,9 @@
 
 Unreal Engine 5.6과 C++로 Title부터 5라운드 Boss전까지 완성하고, 자동 회귀검증과 Windows Shipping 배포본 검증까지 수행한 3인칭 Wave Shooter입니다.
 
-**Gameplay GIF:** To be added
+[![ArenaShooter | Unreal Engine 5.6 Gameplay Demo](https://img.youtube.com/vi/qMS_WJlHeEc/maxresdefault.jpg)](https://youtu.be/qMS_WJlHeEc)
 
-**Gameplay Video:** To be added
+**[▶ Gameplay Demo 영상 보기](https://youtu.be/qMS_WJlHeEc)**
 
 | 개발 | Engine | Language | 핵심 | 검증 / 배포 |
 |---|---|---|---|---|
@@ -81,7 +81,7 @@ Player / Hitscan Weapon
 
 ## Testing / Verification
 
-현재 `master`(`093aca6`)에서 2026-08-31 **Round 1~5 All-Rounds Smoke 재통과**를 확인했습니다. 검증된 Shipping ZIP 기록은 `f3bf9c7` 기준이며, 이후 최신 커밋에는 에디터 설정과 맵 External Actor 복원이 포함됩니다.
+게임 코드 기준 커밋 `093aca6`에서 2026-08-31 **Round 1~5 All-Rounds Smoke 재통과**를 확인했습니다. 검증된 Shipping ZIP 기록은 `f3bf9c7` 기준이며, 이후 최신 커밋에는 에디터 설정과 맵 External Actor 복원이 포함됩니다.
 
 | 검증 범위 | 기록된 결과 |
 |---|---|
@@ -130,7 +130,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Tools\Editor\run_stabl
 
 ## Current Scope
 
-- Gameplay GIF와 60~90초 실제 사람 조작 영상은 아직 없습니다.
+- 실제 플레이 흐름은 README 상단의 공개 [Gameplay Demo](https://youtu.be/qMS_WJlHeEc)에서 확인할 수 있으며, 별도 Gameplay GIF는 아직 없습니다.
 - 검증 ZIP은 기록돼 있지만 GitHub Release에 첨부되지 않았고, clean PC QA는 남아 있습니다.
 - 최신 `master`의 에디터·맵 복원 뒤 Editor All-Rounds Smoke는 통과했지만, 해당 HEAD의 Shipping 재패키징은 아직 실행하지 않았습니다.
 - Boss는 native component로 구분했으며 전용 제작 mesh/animation은 사용하지 않습니다.
